@@ -10,6 +10,7 @@ const RINGS = ['var(--lavender)', 'var(--butter)', 'var(--mint)', 'var(--salmon)
 const PLAY_ICON = 'M8 5v14l11-7z';
 const PAUSE_ICON = 'M7 5h4v14H7zM13 5h4v14h-4z';
 const TRACK_INTERVAL_MS = 20000;
+const RADIO_ICON = 'M4 8h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zm1.5-1.2 11-4.3.7 1.9-6.4 2.4zM8 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm6 1v1.5h5V12zm0 3v1.5h5V15z';
 // ジャンルの選択画面のアイコン（24×24 の線画）と色
 const GENRE_ICONS = {
   all: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 9h-3a15 15 0 0 0-1.3-6 8 8 0 0 1 4.3 6zM12 4c.9 1.2 1.7 3.6 1.9 7h-3.8c.2-3.4 1-5.8 1.9-7zM9.4 5a15 15 0 0 0-1.3 6h-3a8 8 0 0 1 4.3-6zM5.1 13h3a15 15 0 0 0 1.3 6 8 8 0 0 1-4.3-6zm5 0h3.8c-.2 3.4-1 5.8-1.9 7-.9-1.2-1.7-3.6-1.9-7zm4.5 6a15 15 0 0 0 1.3-6h3a8 8 0 0 1-4.3 6z',
@@ -81,11 +82,18 @@ const ringFor = (id) => RINGS[[...id].reduce((n, ch) => n + ch.charCodeAt(0), 0)
 const isFavorite = (id) => favorites.some((s) => s.id === id);
 
 function logoElement(station) {
+  // ロゴ画像がない・読めないときは、文字ではなくラジオの絵を出す
   const initials = () => {
     const div = document.createElement('div');
     div.className = 'logo initials';
-    div.textContent = station.name.trim().slice(0, 2).toUpperCase();
     div.style.setProperty('--ring', ringFor(station.id));
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', RADIO_ICON);
+    svg.append(path);
+    div.append(svg);
     return div;
   };
   if (!station.logo) return initials();
@@ -198,7 +206,6 @@ function renderGenres() {
   box.replaceChildren();
   sheet.replaceChildren();
   for (const genre of [{ id: 'all', label: 'すべて', en: 'ALL' }, ...GENRES]) {
-    if (counts && counts[genre.id] === 0 && genre.id !== state.genre) continue;
     const pick = (fromSheet) => {
       state.genre = genre.id;
       prefs.genre = genre.id;
@@ -209,6 +216,8 @@ function renderGenres() {
       }
       reload(false);
     };
+    sheet.append(genreTile(genre, counts ? counts[genre.id] : null, () => pick(true)));
+    if (counts && counts[genre.id] === 0 && genre.id !== state.genre) continue; // 上の横並びでは0局を省く
     const chip = document.createElement('button');
     chip.className = 'genre';
     chip.setAttribute('role', 'tab');
@@ -217,8 +226,6 @@ function renderGenres() {
     chip.textContent = counts ? `${genre.label} ${counts[genre.id]}` : genre.label;
     chip.addEventListener('click', () => pick(false));
     box.append(chip);
-
-    sheet.append(genreTile(genre, counts ? counts[genre.id] : null, () => pick(true)));
   }
 }
 
@@ -228,6 +235,7 @@ function genreTile(genre, count, onPick) {
   const tile = document.createElement('button');
   tile.className = 'genre-tile';
   tile.classList.toggle('active', selected);
+  tile.classList.toggle('empty', count === 0);
   tile.style.setProperty('--tone', GENRE_TONES[genre.id]);
   const top = document.createElement('div');
   top.className = 'tile-top';
@@ -282,7 +290,8 @@ async function showMore(token) {
       $('#more').hidden = state.shown >= matched.length;
     }
     refreshStars();
-    setMessage(list.children.length ? '' : 'この条件の局は見つかりません');
+    const hint = state.country === 'ALL' ? '' : '国を「🌐 すべての国」にすると、世界の局から探せます';
+    setMessage(list.children.length ? '' : `この国には、このジャンルの局がありません。${hint}`);
   } catch (error) {
     if (token === state.token) setMessage(`局の一覧を取得できませんでした（${error.message}）。通信状態を確かめて、もう一度選んでください`);
   } finally {
