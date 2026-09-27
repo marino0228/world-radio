@@ -2,6 +2,8 @@ import { GENRES, genreLabel } from './genres.js';
 import { fetchStreamTitle } from './icy.js';
 import { PAGE_SIZE, countryStationsPath, fetchJson, flagEmoji, reportClick, searchPath, toStations } from './radio.js';
 import { SleepTimer, formatRemaining } from './timer.js';
+import { Pomodoro, pomodoroLabel } from './pomodoro.js';
+import { playChime, unlockChime } from './chime.js';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
@@ -68,6 +70,7 @@ const state = {
   trackToken: 0,
 };
 const sleep = new SleepTimer();
+const pomodoro = new Pomodoro();
 let favorites = Array.isArray(load(FAVORITES_KEY, [])) ? load(FAVORITES_KEY, []) : [];
 
 // --- 小さな部品 ---
@@ -410,7 +413,35 @@ function checkSleep() {
   renderSleep();
 }
 
-function play(station) {
+// quiet: ポモドーロの再開など、画面の位置を動かさず、再生回数も数えないとき
+// --- ポモドーロ ---
+function renderPomodoro() {
+  const toggle = $('#pomodoro-toggle');
+  toggle.classList.toggle('on', pomodoro.active);
+  toggle.setAttribute('aria-pressed', String(pomodoro.active));
+  $('#pomodoro-label').textContent = pomodoroLabel(pomodoro);
+}
+
+// 休憩に入るとラジオを止め、集中に戻ると（休憩前に流れていれば）再開する
+function checkPomodoro() {
+  const phase = pomodoro.advance();
+  if (phase === 'short' || phase === 'long') {
+    const audio = $('#audio');
+    state.resumeAfterBreak = !audio.paused;
+    audio.pause();
+    playChime('rest');
+    setStatus(phase === 'long' ? '長い休憩（15分）です。ラジオを止めました' : '休憩（5分）です。ラジオを止めました');
+  } else if (phase === 'focus') {
+    playChime('focus');
+    if (state.current && state.resumeAfterBreak) {
+      setTimeout(() => play(state.current, { quiet: true }), 1200); // ベルが聞こえてから再開する
+    }
+    setStatus('集中を再開しました');
+  }
+  renderPomodoro();
+}
+
+function play(station, { quiet = false } = {}) {
   const audio = $('#audio');
   stopStream();
   state.current = station;
@@ -436,9 +467,11 @@ function play(station) {
     audio.src = station.url; // Safari は .m3u8 もそのまま再生できる
   }
   audio.play().catch(() => setStatus('▶ を押すと再生します'));
-  reportClick(station.id);
   startTrack(station);
-  window.scrollTo({ top: 0 }); // 再生中のカードを見えるようにする
+  if (!quiet) {
+    reportClick(station.id);
+    window.scrollTo({ top: 0 }); // 再生中のカードを見えるようにする
+  }
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: station.name,
@@ -460,7 +493,10 @@ audio.addEventListener('playing', () => {
   setPlayIcon(true);
 });
 audio.addEventListener('pause', () => setPlayIcon(false));
-audio.addEventListener('timeupdate', checkSleep); // 画面ロック中でも再生中はこの合図が届く
+audio.addEventListener('timeupdate', () => {
+  checkSleep(); // 画面ロック中でも再生中はこの合図が届く
+  checkPomodoro();
+});
 audio.addEventListener('waiting', () => setStatus('読み込み中…'));
 audio.addEventListener('error', () => {
   if (audio.getAttribute('src')) failed();
@@ -496,7 +532,26 @@ setInterval(() => {
     renderSleep();
     checkSleep();
   }
+  if (pomodoro.active) checkPomodoro();
 }, 1000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) checkPomodoro(); // 画面を開き直したときに追いつく
+});
+
+$('#pomodoro-toggle').addEventListener('click', () => {
+  if (pomodoro.active) {
+    pomodoro.stop();
+    state.resumeAfterBreak = false;
+    setStatus('ポモドーロを終了しました');
+  } else {
+    unlockChime(); // iPhone ではこの操作のときに音の準備をしておく
+    pomodoro.start();
+    playChime('focus');
+    if (state.current && $('#audio').paused) play(state.current, { quiet: true });
+    setStatus('集中スタート（25分）');
+  }
+  renderPomodoro();
+});
 
 $('#now-star').addEventListener('click', () => {
   if (state.current) toggleFavorite(state.current);

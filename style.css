@@ -91,6 +91,7 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 
 /* おやすみタイマー */
 .sleep { display: flex; flex-direction: column; gap: 8px; }
+.timer-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .sleep-toggle {
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
   padding: 8px 14px; border: 0; border-radius: 999px; background: rgba(20, 20, 22, 0.12); color: var(--ink);
