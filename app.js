@@ -443,7 +443,7 @@ function play(station) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: station.name,
       artist: countryName(station.country, station.countryName),
-      album: 'World Radio',
+      album: 'ソトオト',
       artwork: station.logo ? [{ src: station.logo, sizes: '256x256' }] : [],
     });
   }
@@ -515,7 +515,7 @@ $('#more').addEventListener('click', () => showMore(state.token));
   const hour = now.getHours();
   const greeting = hour < 11 ? 'GOOD MORNING' : hour < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
   const date = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
-  $('#today').textContent = `${greeting} · ${date}`;
+  $('#today').textContent = `SOTO OTO · ${greeting} · ${date}`;
 })();
 
 // ジャンルの選択画面

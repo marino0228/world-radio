@@ -47,7 +47,8 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 
 /* 見出し */
 .masthead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.title { margin: 2px 0 0; font-family: var(--display); font-size: 26px; font-weight: 900; letter-spacing: .01em; }
+.title { margin: 2px 0 0; font-family: var(--display); font-size: 30px; font-weight: 900; letter-spacing: .04em; }
+.tagline { margin: 2px 0 0; color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
 .count-dot {
   display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
   background: var(--butter); color: var(--ink);
