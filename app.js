@@ -6,7 +6,7 @@ import { SleepTimer, formatRemaining } from './timer.js';
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
 const PREFS_KEY = 'world-radio-prefs';
-const RINGS = ['var(--violet)', 'var(--blue)', 'var(--pink)', 'var(--peach)'];
+const RINGS = ['var(--lavender)', 'var(--butter)', 'var(--mint)', 'var(--salmon)'];
 const PLAY_ICON = 'M8 5v14l11-7z';
 const PAUSE_ICON = 'M7 5h4v14H7zM13 5h4v14h-4z';
 const TRACK_INTERVAL_MS = 20000;
@@ -339,7 +339,8 @@ function play(station) {
   const audio = $('#audio');
   stopStream();
   state.current = station;
-  $('#now-label').textContent = 'いま再生中';
+  $('#now-label').textContent = 'NOW PLAYING';
+  $('#live-pill').hidden = false;
   $('#now-name').textContent = station.name;
   $('#now-meta').textContent = `${station.flag} ${countryName(station.country, station.countryName)}`.trim();
   $('#now-genres').replaceChildren(...station.genres.slice(0, 3).map(badge));
@@ -362,6 +363,7 @@ function play(station) {
   audio.play().catch(() => setStatus('▶ を押すと再生します'));
   reportClick(station.id);
   startTrack(station);
+  window.scrollTo({ top: 0 }); // 再生中のカードを見えるようにする
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: station.name,
@@ -431,6 +433,43 @@ $('#country').addEventListener('change', (event) => {
   reload(true);
 });
 $('#more').addEventListener('click', () => showMore(state.token));
+
+// 見出しのラベル：あいさつと日付
+(() => {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 11 ? 'GOOD MORNING' : hour < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
+  const date = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+  $('#today').textContent = `${greeting} · ${date}`;
+})();
+
+// 画面下のナビ：見えている場所の項目を強調する
+const navLinks = [...document.querySelectorAll('.bottom-nav a')];
+// タイマーは再生中カードの中にあるので、場所での判定には使わない（押したときだけ強調）
+const sections = navLinks
+  .filter((a) => a.dataset.target !== 'timer')
+  .map((a) => document.getElementById(a.dataset.target))
+  .filter(Boolean);
+for (const a of navLinks) {
+  a.addEventListener('click', () => {
+    for (const other of navLinks) other.classList.toggle('active', other === a);
+  });
+}
+function highlightNav() {
+  const line = window.innerHeight * 0.35;
+  let current = sections[0];
+  let best = -Infinity;
+  for (const section of sections) {
+    const top = section.getBoundingClientRect().top;
+    if (top <= line && top > best) {
+      best = top;
+      current = section;
+    }
+  }
+  for (const a of navLinks) a.classList.toggle('active', a.dataset.target === current.id);
+}
+window.addEventListener('scroll', highlightNav, { passive: true });
+highlightNav();
 
 renderFavorites();
 refreshStars();

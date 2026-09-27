@@ -6,39 +6,46 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#4a3e6e">
+  <meta name="theme-color" content="#0e0e10">
   <title>World Radio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app">
+  <main class="app" id="top">
     <header class="masthead">
-      <div>
-        <p class="brand-light">World</p>
-        <h1 class="brand-bold">Radio</h1>
+      <div class="masthead-text">
+        <p class="eyebrow" id="today">WORLD RADIO</p>
+        <h1 class="title">世界のラジオ</h1>
       </div>
-      <div class="station-count" aria-live="polite"><span id="count-number">–</span><small>局</small></div>
+      <div class="count-dot" aria-live="polite" title="この国で聞ける局の数">
+        <span id="count-number">–</span>
+      </div>
     </header>
 
-    <section class="now" aria-label="いま再生中">
-      <div class="now-body">
-        <p class="now-label" id="now-label">局を選ぶと、ここで再生します</p>
-        <p class="now-name" id="now-name">World Radio</p>
-        <p class="now-meta" id="now-meta">世界のラジオを、どこからでも</p>
-        <p class="now-track" id="now-track" hidden></p>
-        <div class="now-genres" id="now-genres"></div>
+    <section class="now card-salmon" aria-label="いま再生中">
+      <div class="now-top">
+        <p class="eyebrow dark" id="now-label">局を選ぶと、ここで再生します</p>
+        <span class="live-pill" id="live-pill" hidden>● LIVE</span>
       </div>
-      <div class="now-controls">
-        <button id="play" class="play" aria-label="再生" disabled>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M8 5v14l11-7z"/></svg>
-        </button>
-        <button id="now-star" class="round-star" aria-label="お気に入りに登録" disabled>☆</button>
+      <div class="now-main">
+        <div class="now-body">
+          <p class="now-name" id="now-name">World Radio</p>
+          <p class="now-meta" id="now-meta">世界のラジオを、どこからでも</p>
+          <p class="now-track" id="now-track" hidden></p>
+          <div class="now-genres" id="now-genres"></div>
+        </div>
+        <div class="now-controls">
+          <button id="play" class="play" aria-label="再生" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button id="now-star" class="round-star" aria-label="お気に入りに登録" disabled>☆</button>
+        </div>
       </div>
       <p class="now-status" id="now-status" role="status"></p>
-      <div class="sleep">
+      <div class="sleep" id="timer">
         <button id="sleep-toggle" class="sleep-toggle" aria-expanded="false" aria-controls="sleep-options">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
           <span id="sleep-label">おやすみタイマー</span>
@@ -55,19 +62,21 @@
     </section>
     <audio id="audio" preload="none"></audio>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>お気に入り</h2>
-        <span class="hint">この端末に保存</span>
+    <section class="card" id="favorites-section">
+      <div class="card-head">
+        <p class="eyebrow">FAVORITES</p>
+        <span class="chip">この端末に保存</span>
       </div>
+      <h2 class="card-title">お気に入り</h2>
       <div class="favorites" id="favorites"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>ジャンル</h2>
+    <section class="card" id="stations-section">
+      <div class="card-head">
+        <p class="eyebrow">STATIONS</p>
         <select id="country" class="country" aria-label="国"></select>
       </div>
+      <h2 class="card-title">ジャンル</h2>
       <div class="genres" id="genres" role="tablist" aria-label="ジャンル"></div>
       <ul class="stations" id="stations"></ul>
       <p class="message" id="message"></p>
@@ -78,6 +87,25 @@
       局の情報: <a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser</a>（https で配信している局のみ）
     </footer>
   </main>
+
+  <nav class="bottom-nav" aria-label="移動">
+    <a href="#top" class="active" data-target="top">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      <span>HOME</span>
+    </a>
+    <a href="#favorites-section" data-target="favorites-section">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
+      <span>FAVORITE</span>
+    </a>
+    <a href="#stations-section" data-target="stations-section">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h3V9H4zm6.5 0h3V5h-3zM17 18h3v-6h-3z"/></svg>
+      <span>STATIONS</span>
+    </a>
+    <a href="#timer" data-target="timer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+      <span>TIMER</span>
+    </a>
+  </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script type="module" src="app.js"></script>
