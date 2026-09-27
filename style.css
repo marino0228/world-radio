@@ -133,6 +133,28 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 .fav.playing { outline: 3px solid var(--salmon); outline-offset: 2px; }
 .favorites .empty { margin: 0; color: var(--muted); font-size: 13px; }
 
+/* おすすめ：局名と理由の入ったパステルのカード */
+.recs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.recs::-webkit-scrollbar { display: none; }
+.rec-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; flex: 0 0 auto;
+  width: 156px; padding: 12px; border: 0; border-radius: var(--radius-lg);
+  background: var(--butter); color: var(--ink); text-align: left;
+}
+.rec-card:nth-child(3n + 2) { background: var(--mint); }
+.rec-card:nth-child(3n + 3) { background: var(--lavender); }
+.rec-card .logo { width: 44px; height: 44px; }
+.rec-card .logo.initials { background: rgba(20, 20, 22, 0.12); }
+.rec-name {
+  display: -webkit-box; overflow: hidden; margin: 0; font-size: 14px; font-weight: 800; line-height: 1.3;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.rec-reason {
+  display: -webkit-box; overflow: hidden; margin: 0; font-size: 11px; font-weight: 700; line-height: 1.4; opacity: .7;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.recs .empty { margin: 0; color: var(--muted); font-size: 13px; }
+
 /* ジャンル：黒いピル。選択中はサーモン */
 .genres { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .genres::-webkit-scrollbar { display: none; }

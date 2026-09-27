@@ -1,6 +1,7 @@
 import { GENRES, genreLabel } from './genres.js';
 import { fetchStreamTitle } from './icy.js';
-import { PAGE_SIZE, countryStationsPath, fetchJson, flagEmoji, reportClick, searchPath, toStations } from './radio.js';
+import { PAGE_SIZE, countryStationsPath, fetchJson, flagEmoji, reportClick, searchPath, tagSearchPath, toStations } from './radio.js';
+import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js';
 import { SleepTimer, formatRemaining } from './timer.js';
 import { Pomodoro, pomodoroLabel } from './pomodoro.js';
 import { playChime, unlockChime } from './chime.js';
@@ -8,6 +9,7 @@ import { playChime, unlockChime } from './chime.js';
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
 const PREFS_KEY = 'world-radio-prefs';
+const HISTORY_KEY = 'soto-oto-history';
 const RINGS = ['var(--lavender)', 'var(--butter)', 'var(--mint)', 'var(--salmon)'];
 const PLAY_ICON = 'M8 5v14l11-7z';
 const PAUSE_ICON = 'M7 5h4v14H7zM13 5h4v14h-4z';
@@ -72,6 +74,12 @@ const state = {
 const sleep = new SleepTimer();
 const pomodoro = new Pomodoro();
 let favorites = Array.isArray(load(FAVORITES_KEY, [])) ? load(FAVORITES_KEY, []) : [];
+let history = (() => {
+  const saved = load(HISTORY_KEY, {});
+  return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+})();
+const recCache = new Map(); // タグ → そのタグの人気局
+let recToken = 0;
 
 // --- 小さな部品 ---
 const countryName = (code, fallback) => {
@@ -134,6 +142,58 @@ function toggleFavorite(station) {
   save(FAVORITES_KEY, favorites);
   renderFavorites();
   refreshStars();
+  renderRecommendations();
+}
+
+// --- おすすめ ---
+function emptyNote(text) {
+  const p = document.createElement('p');
+  p.className = 'empty';
+  p.textContent = text;
+  return p;
+}
+
+function recCard({ station, reasons }) {
+  const card = document.createElement('button');
+  card.className = 'rec-card';
+  const name = document.createElement('p');
+  name.className = 'rec-name';
+  name.textContent = station.name;
+  const reason = document.createElement('p');
+  reason.className = 'rec-reason';
+  reason.textContent = `${station.flag} ${reasonText(reasons)}`.trim();
+  card.append(logoElement(station), name, reason);
+  card.addEventListener('click', () => play(station));
+  return card;
+}
+
+async function tagStations(tag) {
+  if (!recCache.has(tag)) {
+    try {
+      recCache.set(tag, toStations(await fetchJson(tagSearchPath(tag))));
+    } catch {
+      return []; // 取れなかったタグは次の機会に取り直す
+    }
+  }
+  return recCache.get(tag);
+}
+
+async function renderRecommendations() {
+  const token = ++recToken;
+  const box = $('#recs');
+  const profile = tasteProfile(history, favorites);
+  const tags = topTags(profile, 3);
+  if (!tags.length) {
+    box.replaceChildren(emptyNote('何局か聴くと、ここにおすすめが出ます'));
+    return;
+  }
+  const lists = await Promise.all(tags.map(tagStations));
+  if (token !== recToken) return;
+  const exclude = new Set([...Object.keys(history), ...favorites.map((s) => s.id)]);
+  const recs = recommend(lists.flat(), profile, exclude, 12);
+  box.replaceChildren(...(recs.length
+    ? recs.map(recCard)
+    : [emptyNote('似ている局が見つかりませんでした。ほかの局も聴いてみてください')]));
 }
 
 function renderFavorites() {
@@ -445,6 +505,7 @@ function play(station, { quiet = false } = {}) {
   const audio = $('#audio');
   stopStream();
   state.current = station;
+  state.recorded = quiet; // ポモドーロの再開などは、聴いた回数に数えない
   $('#now-label').textContent = 'NOW PLAYING';
   $('#live-pill').hidden = false;
   $('#now-name').textContent = station.name;
@@ -489,6 +550,13 @@ function failed() {
 
 const audio = $('#audio');
 audio.addEventListener('playing', () => {
+  if (state.current && !state.recorded) {
+    // 実際に音が出た局だけを、おすすめ用の記録に残す
+    state.recorded = true;
+    history = recordPlay(history, state.current, Date.now());
+    save(HISTORY_KEY, history);
+    renderRecommendations();
+  }
   setStatus('');
   setPlayIcon(true);
 });
@@ -624,6 +692,7 @@ highlightNav();
 
 renderFavorites();
 refreshStars();
+renderRecommendations();
 (async () => {
   try {
     await loadCountries();

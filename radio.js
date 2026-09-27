@@ -14,6 +14,9 @@ export function flagEmoji(code) {
 export const countryStationsPath = (code) =>
   `/json/stations/bycountrycodeexact/${code.toUpperCase()}?${COMMON}&limit=500`;
 
+export const tagSearchPath = (tag) =>
+  `/json/stations/search?${COMMON}&limit=60&tag=${encodeURIComponent(tag)}`;
+
 export function searchPath(genre, offset) {
   const tag = SEARCH_TAGS[genre];
   return `/json/stations/search?${COMMON}&limit=${PAGE_SIZE}&offset=${offset}${tag ? `&tag=${tag}` : ''}`;
@@ -37,6 +40,9 @@ export function toStations(raw) {
       url,
       genres: radioGenres(row.tags),
       logo: (row.favicon || '').startsWith('https://') ? row.favicon : null,
+      // おすすめ用：タグ（小文字・最大8個）と主な言語
+      tags: [...new Set((row.tags || '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 8),
+      language: (row.language || '').split(',')[0].trim().toLowerCase(),
     });
   }
   return stations;
