@@ -1,0 +1,170 @@
+/* 紫 × ピーチの柔らかなカード（参考デザインに合わせた一色のテーマ） */
+:root {
+  color-scheme: dark;
+  --bg: #4a3e6e;
+  --surface: #3f345f;
+  --surface-2: #463a69;
+  --raised: #53477c;
+  --shadow: #2f2649;
+  --peach: #f5c28c;
+  --peach-deep: #e7a66a;
+  --on-peach: #3a2e5a;
+  --text: #f6f0ff;
+  --muted: #b7acd8;
+  --blue: #9dc7f5;
+  --violet: #b9a3f6;
+  --pink: #f4a3a6;
+  --radius-lg: 28px;
+  --radius: 20px;
+  --radius-sm: 14px;
+  --font: "Nunito", "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--peach); outline-offset: 2px; }
+
+.app {
+  display: flex; flex-direction: column; gap: 18px;
+  max-width: 720px; margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 28px);
+}
+
+/* 見出し：細い「World」と太い「Radio」 */
+.masthead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand-light { margin: 0; color: var(--muted); font-size: 22px; font-weight: 400; }
+.brand-bold { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: .01em; }
+.station-count {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 64px; height: 64px; border-radius: var(--radius); background: var(--surface);
+  box-shadow: 6px 6px 14px var(--shadow), -3px -3px 10px var(--raised);
+  font-variant-numeric: tabular-nums;
+}
+.station-count span { font-size: 20px; font-weight: 800; color: var(--peach); }
+.station-count small { font-size: 11px; color: var(--muted); }
+
+/* いま再生中：ピーチ色の大きなカード */
+.now {
+  position: relative; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px;
+  padding: 20px; border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, #f8cd9d 0%, var(--peach) 55%, var(--peach-deep) 100%);
+  color: var(--on-peach);
+  box-shadow: 0 14px 30px rgba(28, 20, 50, 0.45);
+}
+.now-body { min-width: 0; }
+.now-label { margin: 0; font-size: 13px; font-weight: 700; opacity: .75; }
+.now-name {
+  margin: 4px 0 2px; overflow: hidden; font-size: 26px; font-weight: 800; line-height: 1.2;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.now-meta { margin: 0; font-size: 14px; font-weight: 600; opacity: .8; }
+.now-genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 24px; }
+.now-genres .badge { background: var(--on-peach); color: var(--peach); }
+.now-controls { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.play {
+  display: grid; place-items: center; width: 64px; height: 64px; border: 0; border-radius: var(--radius);
+  background: var(--on-peach); box-shadow: 0 8px 18px rgba(40, 30, 70, 0.45);
+}
+.play svg { width: 30px; height: 30px; fill: var(--peach); }
+.play:disabled { opacity: .45; cursor: default; }
+.round-star {
+  width: 44px; height: 44px; border: 0; border-radius: 50%;
+  background: rgba(58, 46, 90, 0.14); color: var(--on-peach); font-size: 22px;
+}
+.round-star.on { background: var(--on-peach); color: var(--peach); }
+.round-star:disabled { opacity: .4; cursor: default; }
+.now-status { grid-column: 1 / -1; margin: 0; min-height: 1.2em; font-size: 13px; font-weight: 700; }
+.now-status.error { color: #9b2c3a; }
+
+/* パネル（紫の一段暗いカード） */
+.panel {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 16px; border-radius: var(--radius-lg); background: var(--surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.panel-head h2 { margin: 0; font-size: 17px; font-weight: 800; }
+.hint { color: var(--muted); font-size: 12px; }
+
+/* お気に入り：丸いロゴを縦長の小カードに */
+.favorites { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.favorites::-webkit-scrollbar { display: none; }
+.fav {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 0 0 auto;
+  width: 84px; padding: 10px 6px 8px; border: 0; border-radius: var(--radius); background: var(--surface-2);
+  font-size: 12px; font-weight: 700; text-align: center;
+}
+.fav span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav.playing { background: var(--peach); color: var(--on-peach); }
+.favorites .empty { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* ジャンル：角丸の四角いチップ */
+.genres { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.genres::-webkit-scrollbar { display: none; }
+.genre {
+  flex: 0 0 auto; padding: 9px 14px; border: 0; border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--muted); font-size: 14px; font-weight: 700;
+}
+.genre.active { background: var(--peach); color: var(--on-peach); box-shadow: 0 6px 14px rgba(20, 12, 40, 0.35); }
+
+.country {
+  max-width: 100%; padding: 8px 14px; border: 0; border-radius: 999px;
+  background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 700;
+}
+
+/* 局の一覧：丸いロゴ＋名前＋バッジ＋☆ */
+.stations { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.station { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: var(--radius); background: var(--surface-2); }
+.station.playing { background: var(--raised); box-shadow: inset 0 0 0 2px var(--peach); }
+.station-main {
+  display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0;
+  padding: 2px; border: 0; background: none; text-align: left;
+}
+.logo {
+  flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 3px var(--ring, var(--violet)); object-fit: cover;
+}
+.logo.initials {
+  display: grid; place-items: center; background: var(--surface);
+  color: var(--peach); font-size: 14px; font-weight: 800;
+}
+.info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.name { overflow: hidden; font-size: 15px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.meta { color: var(--muted); font-size: 12px; font-weight: 600; }
+.badge {
+  flex-shrink: 0; padding: 3px 9px; border-radius: 999px;
+  background: rgba(185, 163, 246, 0.2); color: var(--violet); font-size: 11px; font-weight: 800; white-space: nowrap;
+}
+.badge.g-news, .badge.g-talk { background: rgba(157, 199, 245, 0.2); color: var(--blue); }
+.badge.g-healing, .badge.g-classical, .badge.g-jazz { background: rgba(245, 194, 140, 0.2); color: var(--peach); }
+.badge.g-religious, .badge.g-sports { background: rgba(244, 163, 166, 0.2); color: var(--pink); }
+.star {
+  flex-shrink: 0; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: var(--surface); color: var(--muted); font-size: 17px;
+}
+.star.on { background: var(--peach); color: var(--on-peach); }
+
+.message { margin: 0; color: var(--muted); font-size: 14px; }
+.message:empty { display: none; }
+.more {
+  align-self: center; padding: 12px 28px; border: 0; border-radius: var(--radius);
+  background: var(--peach); color: var(--on-peach); font-weight: 800;
+}
+.footer { color: var(--muted); font-size: 12px; text-align: center; }
+.footer a { color: var(--peach); }
+
+@media (max-width: 420px) {
+  .now-name { font-size: 22px; }
+  .station-main .badge ~ .badge { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .genre, .star, .fav, .play { transition: background-color .15s, transform .15s; }
+  .play:active, .genre:active, .star:active { transform: scale(0.95); }
+}

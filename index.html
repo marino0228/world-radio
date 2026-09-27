@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4a3e6e">
+  <title>World Radio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <div>
+        <p class="brand-light">World</p>
+        <h1 class="brand-bold">Radio</h1>
+      </div>
+      <div class="station-count" aria-live="polite"><span id="count-number">–</span><small>局</small></div>
+    </header>
+
+    <section class="now" aria-label="いま再生中">
+      <div class="now-body">
+        <p class="now-label" id="now-label">局を選ぶと、ここで再生します</p>
+        <p class="now-name" id="now-name">World Radio</p>
+        <p class="now-meta" id="now-meta">世界のラジオを、どこからでも</p>
+        <div class="now-genres" id="now-genres"></div>
+      </div>
+      <div class="now-controls">
+        <button id="play" class="play" aria-label="再生" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="now-star" class="round-star" aria-label="お気に入りに登録" disabled>☆</button>
+      </div>
+      <p class="now-status" id="now-status" role="status"></p>
+    </section>
+    <audio id="audio" preload="none"></audio>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>お気に入り</h2>
+        <span class="hint">この端末に保存</span>
+      </div>
+      <div class="favorites" id="favorites"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>ジャンル</h2>
+        <select id="country" class="country" aria-label="国"></select>
+      </div>
+      <div class="genres" id="genres" role="tablist" aria-label="ジャンル"></div>
+      <ul class="stations" id="stations"></ul>
+      <p class="message" id="message"></p>
+      <button id="more" class="more" hidden>さらに表示</button>
+    </section>
+
+    <footer class="footer">
+      局の情報: <a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser</a>（https で配信している局のみ）
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
