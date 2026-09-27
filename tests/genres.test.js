@@ -20,4 +20,6 @@ eq(radioGenres(''), ['general'], 'empty');
 eq(radioGenres(null), ['general'], 'null');
 eq(SEARCH_TAGS.healing, 'relax', 'healing search tag');
 
+eq(GENRES.map((g) => g.en), ['NEWS', 'TALK', 'MUSIC', 'CLASSICAL', 'JAZZ', 'HEALING', 'SPORTS', 'RELIGION', 'OTHER'], 'english names');
+
 print(failed ? `${failed} FAILED` : 'ALL PASSED');

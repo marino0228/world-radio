@@ -1,35 +1,35 @@
 // ラジオのジャンル。Radio Browser の tags（カンマ区切りの自由入力）から判定する。
 // World TV（server/genres.py の RADIO_GENRES）と同じ対応表。
 export const GENRES = [
-  { id: 'news', label: 'ニュース', words: ['news', 'information', 'noticias', 'nachrichten', 'actualites'] },
-  { id: 'talk', label: 'トーク', words: ['talk', 'speech', 'podcast', 'comedy'] },
+  { id: 'news', label: 'ニュース', en: 'NEWS', words: ['news', 'information', 'noticias', 'nachrichten', 'actualites'] },
+  { id: 'talk', label: 'トーク', en: 'TALK', words: ['talk', 'speech', 'podcast', 'comedy'] },
   {
-    id: 'music', label: '音楽', words: [
+    id: 'music', label: '音楽', en: 'MUSIC', words: [
       'music', 'pop', 'rock', 'jazz', 'classic', 'dance', 'hits', 'top 40', 'electronic', 'hip hop',
       'country', 'oldies', '80s', '90s', 'chill', 'lounge', 'anime', 'r&b', 'soul', 'reggae', 'metal',
       'folk', 'latin', 'house', 'techno', 'ambient', 'instrumental', 'jpop', 'j-pop', 'kpop', 'k-pop',
     ],
   },
   {
-    id: 'classical', label: 'クラシック', words: [
+    id: 'classical', label: 'クラシック', en: 'CLASSICAL', words: [
       'classical', 'opera', 'baroque', 'klassik', 'clasica', 'clásica', 'classique', 'symphon', 'orchestra',
     ],
   },
-  { id: 'jazz', label: 'ジャズ', words: ['jazz', 'swing', 'bebop', 'bossa'] },
+  { id: 'jazz', label: 'ジャズ', en: 'JAZZ', words: ['jazz', 'swing', 'bebop', 'bossa'] },
   // "spa" は "spanish"、"rain" は "ukraine" にも一致するので単独では使わない
   {
-    id: 'healing', label: 'ヒーリング', words: [
+    id: 'healing', label: 'ヒーリング', en: 'HEALING', words: [
       'meditation', 'yoga', 'relax', 'healing', 'nature', 'sleep', 'zen', 'new age', 'ambient',
       'mindfulness', 'binaural', 'rain sounds', 'ocean',
     ],
   },
-  { id: 'sports', label: 'スポーツ', words: ['sport', 'football', 'soccer', 'baseball'] },
+  { id: 'sports', label: 'スポーツ', en: 'SPORTS', words: ['sport', 'football', 'soccer', 'baseball'] },
   {
-    id: 'religious', label: '宗教', words: [
+    id: 'religious', label: '宗教', en: 'RELIGION', words: [
       'christian', 'religious', 'catholic', 'islam', 'quran', 'gospel', 'worship', 'church', 'bible',
     ],
   },
-  { id: 'general', label: 'その他', words: [] },
+  { id: 'general', label: 'その他', en: 'OTHER', words: [] },
 ];
 
 // 「すべての国」でジャンルを選んだときに検索する代表タグ

@@ -10,6 +10,24 @@ const RINGS = ['var(--lavender)', 'var(--butter)', 'var(--mint)', 'var(--salmon)
 const PLAY_ICON = 'M8 5v14l11-7z';
 const PAUSE_ICON = 'M7 5h4v14H7zM13 5h4v14h-4z';
 const TRACK_INTERVAL_MS = 20000;
+// ジャンルの選択画面のアイコン（24×24 の線画）と色
+const GENRE_ICONS = {
+  all: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 9h-3a15 15 0 0 0-1.3-6 8 8 0 0 1 4.3 6zM12 4c.9 1.2 1.7 3.6 1.9 7h-3.8c.2-3.4 1-5.8 1.9-7zM9.4 5a15 15 0 0 0-1.3 6h-3a8 8 0 0 1 4.3-6zM5.1 13h3a15 15 0 0 0 1.3 6 8 8 0 0 1-4.3-6zm5 0h3.8c-.2 3.4-1 5.8-1.9 7-.9-1.2-1.7-3.6-1.9-7zm4.5 6a15 15 0 0 0 1.3-6h3a8 8 0 0 1-4.3 6z',
+  news: 'M4 5h13v14H5a1 1 0 0 1-1-1zm15 3h2v10a1 1 0 0 1-2 0zM7 8v3h7V8zm0 5v1.5h7V13zm0 3v1.5h5V16z',
+  talk: 'M4 4h16v11H9l-5 4z',
+  music: 'M10 4v10.5A3.5 3.5 0 1 0 12 17.7V8h6V4z',
+  classical: 'M15 3l3 3-5.5 5.5 1 1-1.4 1.4-1-1L7 17.1A2.5 2.5 0 1 1 5 15l4.1-4.1-1-1L9.5 8.5l1 1z',
+  jazz: 'M9 3h8v3h-5v8a4 4 0 1 1-3-3.9z',
+  healing: 'M20 4c-8 0-14 4-14 11 0 1.2.2 2.3.6 3.3L4 21l1.4 1.4 2.5-2.5c1 .5 2.2.8 3.4.8C17 20.7 20 14 20 4z',
+  sports: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 3.2 2.4 1.8-.9 2.8h-3l-.9-2.8zM6.3 8.6l2.4.8.9 2.8-1.8 2.4-2.6-.1a7.9 7.9 0 0 1 1.1-5.9zm11.4 0a7.9 7.9 0 0 1 1.1 5.9l-2.6.1-1.8-2.4.9-2.8zM10.4 15h3.2l1.3 2.6a8 8 0 0 1-5.8 0z',
+  religious: 'M11 2h2v5h5v2h-5v13h-2V9H6V7h5z',
+  general: 'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',
+};
+const GENRE_TONES = {
+  all: 'var(--mint)', news: 'var(--salmon)', talk: 'var(--salmon)', music: 'var(--lavender)',
+  classical: 'var(--butter)', jazz: 'var(--butter)', healing: 'var(--mint)', sports: 'var(--butter)',
+  religious: 'var(--lavender)', general: 'var(--muted)',
+};
 const regionNames = (() => {
   try {
     return new Intl.DisplayNames(['ja'], { type: 'region' });
@@ -179,7 +197,7 @@ function renderGenres() {
   const sheet = $('#sheet-genres');
   box.replaceChildren();
   sheet.replaceChildren();
-  for (const genre of [{ id: 'all', label: 'すべて' }, ...GENRES]) {
+  for (const genre of [{ id: 'all', label: 'すべて', en: 'ALL' }, ...GENRES]) {
     if (counts && counts[genre.id] === 0 && genre.id !== state.genre) continue;
     const pick = (fromSheet) => {
       state.genre = genre.id;
@@ -200,20 +218,47 @@ function renderGenres() {
     chip.addEventListener('click', () => pick(false));
     box.append(chip);
 
-    const option = document.createElement('button');
-    option.className = 'genre';
-    option.classList.toggle('active', genre.id === state.genre);
-    const label = document.createElement('span');
-    label.textContent = genre.label;
-    option.append(label);
-    if (counts) {
-      const count = document.createElement('span');
-      count.textContent = counts[genre.id];
-      option.append(count);
-    }
-    option.addEventListener('click', () => pick(true));
-    sheet.append(option);
+    sheet.append(genreTile(genre, counts ? counts[genre.id] : null, () => pick(true)));
   }
+}
+
+// 選択画面のタイル：色付きアイコン、大きな局数、英語名と日本語名
+function genreTile(genre, count, onPick) {
+  const selected = genre.id === state.genre;
+  const tile = document.createElement('button');
+  tile.className = 'genre-tile';
+  tile.classList.toggle('active', selected);
+  tile.style.setProperty('--tone', GENRE_TONES[genre.id]);
+  const top = document.createElement('div');
+  top.className = 'tile-top';
+  const icon = document.createElement('span');
+  icon.className = 'tile-icon';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', GENRE_ICONS[genre.id]);
+  svg.append(path);
+  icon.append(svg);
+  top.append(icon);
+  if (selected) {
+    const pill = document.createElement('span');
+    pill.className = 'tile-pill';
+    pill.textContent = 'SELECTED';
+    top.append(pill);
+  }
+  const number = document.createElement('p');
+  number.className = 'tile-count';
+  number.textContent = count === null ? '—' : count.toLocaleString();
+  const en = document.createElement('p');
+  en.className = 'tile-en';
+  en.textContent = genre.en;
+  const ja = document.createElement('p');
+  ja.className = 'tile-ja';
+  ja.textContent = genre.label;
+  tile.append(top, number, en, ja);
+  tile.addEventListener('click', onPick);
+  return tile;
 }
 
 const matchesGenre = (station) => state.genre === 'all' || station.genres.includes(state.genre);
