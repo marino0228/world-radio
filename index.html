@@ -97,6 +97,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
       <span>FAVORITE</span>
     </a>
+    <button type="button" id="genre-nav" aria-haspopup="dialog" aria-controls="genre-sheet">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg>
+      <span>GENRE</span>
+    </button>
     <a href="#stations-section" data-target="stations-section">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h3V9H4zm6.5 0h3V5h-3zM17 18h3v-6h-3z"/></svg>
       <span>STATIONS</span>
@@ -106,6 +110,19 @@
       <span>TIMER</span>
     </a>
   </nav>
+
+  <div class="sheet" id="genre-sheet" role="dialog" aria-modal="true" aria-labelledby="genre-sheet-title" hidden>
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <div>
+          <p class="eyebrow">GENRE</p>
+          <h2 class="card-title" id="genre-sheet-title">ジャンルを選ぶ</h2>
+        </div>
+        <button type="button" class="sheet-close" id="genre-sheet-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="sheet-genres" id="sheet-genres"></div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script type="module" src="app.js"></script>

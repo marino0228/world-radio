@@ -121,9 +121,9 @@ function renderFavorites() {
     const button = document.createElement('button');
     button.className = 'fav';
     button.classList.toggle('playing', state.current?.id === station.id);
-    const name = document.createElement('span');
-    name.textContent = station.name;
-    button.append(logoElement(station), name);
+    button.title = station.name; // アイコンだけなので、局名は長押し・マウスを重ねたときに出す
+    button.setAttribute('aria-label', station.name);
+    button.append(logoElement(station));
     button.addEventListener('click', () => play(station));
     box.append(button);
   }
@@ -176,22 +176,43 @@ function renderGenres() {
     [['all', state.pool.length], ...GENRES.map((g) => [g.id, state.pool.filter((s) => s.genres.includes(g.id)).length])],
   );
   const box = $('#genres');
+  const sheet = $('#sheet-genres');
   box.replaceChildren();
+  sheet.replaceChildren();
   for (const genre of [{ id: 'all', label: 'すべて' }, ...GENRES]) {
     if (counts && counts[genre.id] === 0 && genre.id !== state.genre) continue;
-    const button = document.createElement('button');
-    button.className = 'genre';
-    button.setAttribute('role', 'tab');
-    button.setAttribute('aria-selected', String(genre.id === state.genre));
-    button.classList.toggle('active', genre.id === state.genre);
-    button.textContent = counts ? `${genre.label} ${counts[genre.id]}` : genre.label;
-    button.addEventListener('click', () => {
+    const pick = (fromSheet) => {
       state.genre = genre.id;
       prefs.genre = genre.id;
       save(PREFS_KEY, prefs);
+      if (fromSheet) {
+        closeGenreSheet();
+        $('#stations-section').scrollIntoView();
+      }
       reload(false);
-    });
-    box.append(button);
+    };
+    const chip = document.createElement('button');
+    chip.className = 'genre';
+    chip.setAttribute('role', 'tab');
+    chip.setAttribute('aria-selected', String(genre.id === state.genre));
+    chip.classList.toggle('active', genre.id === state.genre);
+    chip.textContent = counts ? `${genre.label} ${counts[genre.id]}` : genre.label;
+    chip.addEventListener('click', () => pick(false));
+    box.append(chip);
+
+    const option = document.createElement('button');
+    option.className = 'genre';
+    option.classList.toggle('active', genre.id === state.genre);
+    const label = document.createElement('span');
+    label.textContent = genre.label;
+    option.append(label);
+    if (counts) {
+      const count = document.createElement('span');
+      count.textContent = counts[genre.id];
+      option.append(count);
+    }
+    option.addEventListener('click', () => pick(true));
+    sheet.append(option);
   }
 }
 
@@ -443,6 +464,26 @@ $('#more').addEventListener('click', () => showMore(state.token));
   $('#today').textContent = `${greeting} · ${date}`;
 })();
 
+// ジャンルの選択画面
+function openGenreSheet() {
+  $('#genre-sheet').hidden = false;
+  $('#genre-nav').classList.add('active');
+  $('#genre-sheet-close').focus();
+}
+function closeGenreSheet() {
+  $('#genre-sheet').hidden = true;
+  $('#genre-nav').classList.remove('active');
+  highlightNav();
+}
+$('#genre-nav').addEventListener('click', openGenreSheet);
+$('#genre-sheet-close').addEventListener('click', closeGenreSheet);
+$('#genre-sheet').addEventListener('click', (event) => {
+  if (event.target === event.currentTarget) closeGenreSheet(); // 暗い部分を押しても閉じる
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !$('#genre-sheet').hidden) closeGenreSheet();
+});
+
 // 画面下のナビ：見えている場所の項目を強調する
 const navLinks = [...document.querySelectorAll('.bottom-nav a')];
 // タイマーは再生中カードの中にあるので、場所での判定には使わない（押したときだけ強調）
@@ -466,6 +507,7 @@ function highlightNav() {
       current = section;
     }
   }
+  if (!$('#genre-sheet').hidden) return;
   for (const a of navLinks) a.classList.toggle('active', a.dataset.target === current.id);
 }
 window.addEventListener('scroll', highlightNav, { passive: true });
