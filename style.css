@@ -20,6 +20,7 @@
   --font: "Nunito", "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { background: var(--bg); }
 body {
   margin: 0;
@@ -81,6 +82,27 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 .round-star.on { background: var(--on-peach); color: var(--peach); }
 .round-star:disabled { opacity: .4; cursor: default; }
 .now-status { grid-column: 1 / -1; margin: 0; min-height: 1.2em; font-size: 13px; font-weight: 700; }
+.now-track {
+  margin: 8px 0 0; overflow: hidden; font-size: 14px; font-weight: 800;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* おやすみタイマー */
+.sleep { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.sleep-toggle {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  padding: 8px 14px; border: 0; border-radius: 999px;
+  background: rgba(58, 46, 90, 0.14); color: var(--on-peach); font-size: 13px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.sleep-toggle svg { width: 16px; height: 16px; fill: currentColor; }
+.sleep-toggle.on { background: var(--on-peach); color: var(--peach); }
+.sleep-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.sleep-options button {
+  padding: 7px 12px; border: 0; border-radius: var(--radius-sm);
+  background: rgba(58, 46, 90, 0.14); color: var(--on-peach); font-size: 13px; font-weight: 800;
+}
+.sleep-options button.selected { background: var(--on-peach); color: var(--peach); }
 .now-status.error { color: #9b2c3a; }
 
 /* パネル（紫の一段暗いカード） */

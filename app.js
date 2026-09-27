@@ -1,5 +1,7 @@
 import { GENRES, genreLabel } from './genres.js';
+import { fetchStreamTitle } from './icy.js';
 import { PAGE_SIZE, countryStationsPath, fetchJson, flagEmoji, reportClick, searchPath, toStations } from './radio.js';
+import { SleepTimer, formatRemaining } from './timer.js';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
@@ -7,6 +9,7 @@ const PREFS_KEY = 'world-radio-prefs';
 const RINGS = ['var(--violet)', 'var(--blue)', 'var(--pink)', 'var(--peach)'];
 const PLAY_ICON = 'M8 5v14l11-7z';
 const PAUSE_ICON = 'M7 5h4v14H7zM13 5h4v14h-4z';
+const TRACK_INTERVAL_MS = 20000;
 const regionNames = (() => {
   try {
     return new Intl.DisplayNames(['ja'], { type: 'region' });
@@ -42,7 +45,10 @@ const state = {
   current: null,
   hls: null,
   token: 0,
+  trackTimer: null,
+  trackToken: 0,
 };
+const sleep = new SleepTimer();
 let favorites = Array.isArray(load(FAVORITES_KEY, [])) ? load(FAVORITES_KEY, []) : [];
 
 // --- 小さな部品 ---
@@ -279,6 +285,56 @@ function stopStream() {
   audio.load();
 }
 
+// --- 曲名（放送局が許可している場合だけ） ---
+function stopTrack() {
+  clearInterval(state.trackTimer);
+  state.trackTimer = null;
+  state.trackToken += 1;
+  $('#now-track').hidden = true;
+  $('#now-track').textContent = '';
+}
+
+function startTrack(station) {
+  stopTrack();
+  if (station.url.includes('.m3u8')) return;
+  const token = state.trackToken;
+  const refresh = async () => {
+    let title = null;
+    try {
+      title = await fetchStreamTitle(station.url);
+    } catch {
+      if (token === state.trackToken) stopTrack(); // 許可されていない局：以後は問い合わせない
+      return;
+    }
+    if (token !== state.trackToken) return;
+    $('#now-track').textContent = title ? `🎵 ${title}` : '';
+    $('#now-track').hidden = !title;
+    if (title && 'mediaSession' in navigator && navigator.mediaSession.metadata) {
+      navigator.mediaSession.metadata.title = title;
+      navigator.mediaSession.metadata.artist = station.name;
+    }
+  };
+  refresh();
+  state.trackTimer = setInterval(refresh, TRACK_INTERVAL_MS);
+}
+
+// --- おやすみタイマー ---
+function renderSleep() {
+  const toggle = $('#sleep-toggle');
+  toggle.classList.toggle('on', sleep.active);
+  $('#sleep-label').textContent = sleep.active ? `残り ${formatRemaining(sleep.remainingMs())}` : 'おやすみタイマー';
+}
+
+function checkSleep() {
+  if (!sleep.expired()) return;
+  sleep.cancel();
+  $('#audio').pause();
+  stopTrack();
+  setStatus('おやすみタイマーで停止しました');
+  for (const b of $('#sleep-options').children) b.classList.toggle('selected', b.dataset.minutes === '0');
+  renderSleep();
+}
+
 function play(station) {
   const audio = $('#audio');
   stopStream();
@@ -305,6 +361,7 @@ function play(station) {
   }
   audio.play().catch(() => setStatus('▶ を押すと再生します'));
   reportClick(station.id);
+  startTrack(station);
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: station.name,
@@ -326,6 +383,7 @@ audio.addEventListener('playing', () => {
   setPlayIcon(true);
 });
 audio.addEventListener('pause', () => setPlayIcon(false));
+audio.addEventListener('timeupdate', checkSleep); // 画面ロック中でも再生中はこの合図が届く
 audio.addEventListener('waiting', () => setStatus('読み込み中…'));
 audio.addEventListener('error', () => {
   if (audio.getAttribute('src')) failed();
@@ -340,6 +398,29 @@ $('#play').addEventListener('click', () => {
     audio.pause();
   }
 });
+$('#sleep-toggle').addEventListener('click', () => {
+  const options = $('#sleep-options');
+  options.hidden = !options.hidden;
+  $('#sleep-toggle').setAttribute('aria-expanded', String(!options.hidden));
+});
+for (const button of $('#sleep-options').children) {
+  button.addEventListener('click', () => {
+    const minutes = Number(button.dataset.minutes);
+    if (minutes) sleep.set(minutes);
+    else sleep.cancel();
+    for (const b of $('#sleep-options').children) b.classList.toggle('selected', b === button);
+    $('#sleep-options').hidden = true;
+    $('#sleep-toggle').setAttribute('aria-expanded', 'false');
+    renderSleep();
+  });
+}
+setInterval(() => {
+  if (sleep.active) {
+    renderSleep();
+    checkSleep();
+  }
+}, 1000);
+
 $('#now-star').addEventListener('click', () => {
   if (state.current) toggleFavorite(state.current);
 });
