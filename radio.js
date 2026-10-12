@@ -43,6 +43,10 @@ export function toStations(raw) {
       // おすすめ用：タグ（小文字・最大8個）と主な言語
       tags: [...new Set((row.tags || '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 8),
       language: (row.language || '').split(',')[0].trim().toLowerCase(),
+      // 現地時間用：局の場所（分かる局だけ）
+      lat: typeof row.geo_lat === 'number' ? row.geo_lat : null,
+      lon: typeof row.geo_long === 'number' ? row.geo_long : null,
+      state: (row.state || '').trim(),
     });
   }
   return stations;

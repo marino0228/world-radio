@@ -5,6 +5,7 @@ import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './reco
 import { SleepTimer, formatRemaining } from './timer.js';
 import { Pomodoro, pomodoroLabel } from './pomodoro.js';
 import { playChime, unlockChime } from './chime.js';
+import { stationTimeZone } from './timezone.js';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
@@ -501,6 +502,25 @@ function checkPomodoro() {
   renderPomodoro();
 }
 
+// 国名の横に局の現地時間（30秒ごとに更新）。場所が分からず決められない局は国名だけ
+let clockTimer = null;
+function showLocalTime(station) {
+  clearInterval(clockTimer);
+  const place = `${station.flag} ${countryName(station.country, station.countryName)}`.trim();
+  let format = null;
+  try {
+    const timeZone = stationTimeZone(station);
+    if (timeZone) format = new Intl.DateTimeFormat('ja-JP', { timeZone, hour: '2-digit', minute: '2-digit' });
+  } catch {
+    format = null; // ブラウザが知らないタイムゾーン
+  }
+  const tick = () => {
+    $('#now-meta').textContent = format ? `${place}　🕐 現地 ${format.format(new Date())}` : place;
+  };
+  tick();
+  if (format) clockTimer = setInterval(tick, 30000);
+}
+
 function play(station, { quiet = false } = {}) {
   const audio = $('#audio');
   stopStream();
@@ -509,7 +529,7 @@ function play(station, { quiet = false } = {}) {
   $('#now-label').textContent = 'NOW PLAYING';
   $('#live-pill').hidden = false;
   $('#now-name').textContent = station.name;
-  $('#now-meta').textContent = `${station.flag} ${countryName(station.country, station.countryName)}`.trim();
+  showLocalTime(station);
   $('#now-genres').replaceChildren(...station.genres.slice(0, 3).map(badge));
   $('#play').disabled = false;
   setStatus('接続中…');

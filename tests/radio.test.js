@@ -8,15 +8,15 @@ function eq(actual, expected, label) {
 }
 
 const raw = [
-  { stationuuid: 'u1', name: ' J-Wave ', url_resolved: 'https://r.example/jwave', countrycode: 'JP', country: 'Japan', tags: 'jpop, Music,,city pop', language: 'Japanese,english', favicon: 'https://r.example/j.png', codec: 'MP3' },
+  { stationuuid: 'u1', name: ' J-Wave ', url_resolved: 'https://r.example/jwave', countrycode: 'JP', country: 'Japan', tags: 'jpop, Music,,city pop', language: 'Japanese,english', favicon: 'https://r.example/j.png', codec: 'MP3', geo_lat: 35.7, geo_long: 139.7, state: ' Tokyo ' },
   { stationuuid: 'u2', name: 'Plain HTTP', url_resolved: 'http://r.example/plain', countrycode: 'JP', country: 'Japan', tags: '', favicon: '' },
   { stationuuid: 'u3', name: 'NHK', url_resolved: 'https://r.example/nhk.m3u8', countrycode: 'JP', country: 'Japan', tags: 'news,talk', favicon: 'http://r.example/n.png' },
   { stationuuid: 'u1', name: 'dup', url_resolved: 'https://r.example/dup', countrycode: 'JP', country: 'Japan', tags: '', favicon: '' },
   { stationuuid: 'u4', name: '', url_resolved: '', countrycode: 'JP', country: 'Japan', tags: '', favicon: '' },
 ];
 eq(toStations(raw), [
-  { id: 'u1', name: 'J-Wave', country: 'JP', countryName: 'Japan', flag: '🇯🇵', url: 'https://r.example/jwave', genres: ['music'], logo: 'https://r.example/j.png', tags: ['jpop', 'music', 'city pop'], language: 'japanese' },
-  { id: 'u3', name: 'NHK', country: 'JP', countryName: 'Japan', flag: '🇯🇵', url: 'https://r.example/nhk.m3u8', genres: ['news', 'talk'], logo: null, tags: ['news', 'talk'], language: '' },
+  { id: 'u1', name: 'J-Wave', country: 'JP', countryName: 'Japan', flag: '🇯🇵', url: 'https://r.example/jwave', genres: ['music'], logo: 'https://r.example/j.png', tags: ['jpop', 'music', 'city pop'], language: 'japanese', lat: 35.7, lon: 139.7, state: 'Tokyo' },
+  { id: 'u3', name: 'NHK', country: 'JP', countryName: 'Japan', flag: '🇯🇵', url: 'https://r.example/nhk.m3u8', genres: ['news', 'talk'], logo: null, tags: ['news', 'talk'], language: '', lat: null, lon: null, state: '' },
 ], 'https only, dedupe, genres, https logos only');
 
 eq(countryStationsPath('jp'), '/json/stations/bycountrycodeexact/JP?hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=500', 'country path');
