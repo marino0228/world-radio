@@ -1,14 +1,14 @@
-import { GENRES, genreLabel } from './genres.js?v=202610121721';
-import { fetchStreamTitle } from './icy.js?v=202610121721';
+import { GENRES, genreLabel } from './genres.js?v=202610121840';
+import { fetchStreamTitle } from './icy.js?v=202610121840';
 import {
   PAGE_SIZE, buildRows, countryStationsPath, fetchJson, flagEmoji, nameSearchPath, reportClick, searchPath, tagSearchPath, toStations,
-} from './radio.js?v=202610121721';
-import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js?v=202610121721';
-import { SleepTimer, formatRemaining } from './timer.js?v=202610121721';
-import { Pomodoro, pomodoroLabel } from './pomodoro.js?v=202610121721';
-import { playChime, unlockChime } from './chime.js?v=202610121721';
-import { stationTimeZone } from './timezone.js?v=202610121721';
-import { fetchArtwork, splitTrack } from './artwork.js?v=202610121721';
+} from './radio.js?v=202610121840';
+import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js?v=202610121840';
+import { SleepTimer, formatRemaining } from './timer.js?v=202610121840';
+import { Pomodoro, pomodoroLabel } from './pomodoro.js?v=202610121840';
+import { playChime, unlockChime } from './chime.js?v=202610121840';
+import { stationTimeZone } from './timezone.js?v=202610121840';
+import { fetchArtwork, splitTrack } from './artwork.js?v=202610121840';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
@@ -551,6 +551,31 @@ function stopStream() {
   audio.load();
 }
 
+// 上の再生中カードの1行：入りきらない長さのときだけ、ゆっくり横に流して全部読めるようにする
+function setScrollingText(el, text) {
+  if (el.dataset.text === text) return; // 同じ文なら流れを止めない（現地時間は30秒ごとに更新するため）
+  el.dataset.text = text;
+  el.classList.add('scroll-line');
+  el.classList.remove('marquee');
+  const inner = document.createElement('span');
+  inner.textContent = text;
+  el.replaceChildren(inner);
+  requestAnimationFrame(() => measureScrollingText(el));
+}
+function measureScrollingText(el) {
+  const inner = el.firstElementChild;
+  if (!inner) return;
+  el.classList.remove('marquee');
+  const overflow = inner.scrollWidth - el.clientWidth;
+  if (overflow <= 2) return;
+  el.style.setProperty('--shift', `${-overflow - 12}px`);
+  el.style.setProperty('--dur', `${Math.max(5, overflow / 25 + 3)}s`);
+  el.classList.add('marquee');
+}
+window.addEventListener('resize', () => {
+  for (const el of document.querySelectorAll('.scroll-line')) measureScrollingText(el);
+});
+
 // 再生中の表示（小さなバーと大きな再生画面）。曲名やジャケットが分かったら呼び直す
 let clockTimer = null;
 function renderNowPlaying() {
@@ -568,13 +593,13 @@ function renderNowPlaying() {
   const tick = () => {
     const where = format ? `${place} · 🕐 現地 ${format.format(new Date())}` : place;
     // 小さなバー：1行目に局名、曲名が分かれば2行目に 🎵 付きで、最後の行に国と現地時間
-    $('#mini-sub').textContent = song ? `🎵 ${artist ? `${song} - ${artist}` : song}` : '';
+    setScrollingText($('#mini-sub'), song ? `🎵 ${artist ? `${song} - ${artist}` : song}` : '');
     $('#mini-sub').hidden = !song;
-    $('#mini-where').textContent = where;
+    setScrollingText($('#mini-where'), where);
     $('#player-meta').textContent = song ? `📻 ${station.name} · ${where}` : where;
   };
   $('#mini').hidden = false;
-  $('#mini-name').textContent = station.name;
+  setScrollingText($('#mini-name'), station.name);
   $('#mini-art').replaceChildren(artElement(station, state.cover));
   $('#player-art').replaceChildren(artElement(station, state.cover));
   $('#player').style.setProperty('--hue', hueFor(station.id));
