@@ -50,7 +50,7 @@ a { color: var(--salmon); }
 
 .app {
   max-width: 720px; margin: 0 auto;
-  padding: 0 16px calc(var(--safe-b) + var(--tab-h) + var(--mini-h) + 28px);
+  padding: 0 16px calc(var(--safe-b) + var(--tab-h) + 28px);
 }
 .view-title { margin: 6px 0 14px; font-size: 24px; font-weight: 900; }
 
@@ -122,11 +122,10 @@ a { color: var(--salmon); }
 .search-box input { flex: 1; min-width: 0; padding: 12px 0; border: 0; background: none; font-size: 16px; outline: none; }
 #search-results { margin-top: 14px; }
 
-/* 小さな再生バー */
+/* 再生中のカード（ページの上に表示） */
 .mini {
-  position: fixed; left: 8px; right: 8px; bottom: calc(var(--safe-b) + var(--tab-h) + 6px); z-index: 15;
-  display: flex; align-items: center; gap: 6px; max-width: 704px; height: var(--mini-h); margin: 0 auto; padding: 0 8px;
-  border-radius: 12px; background: #2a2a30; box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  display: flex; align-items: center; gap: 6px; height: var(--mini-h); margin: 2px 0 14px; padding: 0 8px;
+  border-radius: 14px; background: #2a2a30;
 }
 .mini-open { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; height: 100%; padding: 0; border: 0; background: none; text-align: left; }
 .mini-art { flex: 0 0 66px; }

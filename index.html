@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap">
-  <link rel="stylesheet" href="style.css?v=202610121718">
+  <link rel="stylesheet" href="style.css?v=202610121721">
 </head>
 <body>
   <header class="topbar">
@@ -33,6 +33,20 @@
   </header>
 
   <main class="app">
+    <!-- 再生中のカード（上に表示）：押すと大きな再生画面を開く -->
+    <div class="mini" id="mini" hidden>
+      <button type="button" class="mini-open" id="mini-open" aria-label="再生画面を開く">
+        <span class="mini-art" id="mini-art"></span>
+        <span class="mini-text">
+          <span class="mini-name" id="mini-name"></span>
+          <span class="mini-sub" id="mini-sub" hidden></span>
+          <span class="mini-where" id="mini-where"></span>
+        </span>
+      </button>
+      <button type="button" class="mini-play" id="mini-play" aria-label="再生">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-path" d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
     <!-- ホーム -->
     <section id="view-home" class="view">
       <div class="chips" id="genres" role="tablist" aria-label="ジャンル"></div>
@@ -111,21 +125,6 @@
       </section>
     </section>
   </main>
-
-  <!-- 小さな再生バー：押すと大きな再生画面を開く -->
-  <div class="mini" id="mini" hidden>
-    <button type="button" class="mini-open" id="mini-open" aria-label="再生画面を開く">
-      <span class="mini-art" id="mini-art"></span>
-      <span class="mini-text">
-        <span class="mini-name" id="mini-name"></span>
-        <span class="mini-sub" id="mini-sub" hidden></span>
-        <span class="mini-where" id="mini-where"></span>
-      </span>
-    </button>
-    <button type="button" class="mini-play" id="mini-play" aria-label="再生">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-path" d="M8 5v14l11-7z"/></svg>
-    </button>
-  </div>
 
   <nav class="tabbar" aria-label="移動">
     <button type="button" data-go="home" class="active">
@@ -212,6 +211,6 @@
 
   <audio id="audio" preload="none"></audio>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
-  <script type="module" src="app.js?v=202610121718"></script>
+  <script type="module" src="app.js?v=202610121721"></script>
 </body>
 </html>

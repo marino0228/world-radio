@@ -1,14 +1,14 @@
-import { GENRES, genreLabel } from './genres.js?v=202610121718';
-import { fetchStreamTitle } from './icy.js?v=202610121718';
+import { GENRES, genreLabel } from './genres.js?v=202610121721';
+import { fetchStreamTitle } from './icy.js?v=202610121721';
 import {
   PAGE_SIZE, buildRows, countryStationsPath, fetchJson, flagEmoji, nameSearchPath, reportClick, searchPath, tagSearchPath, toStations,
-} from './radio.js?v=202610121718';
-import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js?v=202610121718';
-import { SleepTimer, formatRemaining } from './timer.js?v=202610121718';
-import { Pomodoro, pomodoroLabel } from './pomodoro.js?v=202610121718';
-import { playChime, unlockChime } from './chime.js?v=202610121718';
-import { stationTimeZone } from './timezone.js?v=202610121718';
-import { fetchArtwork, splitTrack } from './artwork.js?v=202610121718';
+} from './radio.js?v=202610121721';
+import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js?v=202610121721';
+import { SleepTimer, formatRemaining } from './timer.js?v=202610121721';
+import { Pomodoro, pomodoroLabel } from './pomodoro.js?v=202610121721';
+import { playChime, unlockChime } from './chime.js?v=202610121721';
+import { stationTimeZone } from './timezone.js?v=202610121721';
+import { fetchArtwork, splitTrack } from './artwork.js?v=202610121721';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
@@ -693,7 +693,10 @@ function play(station, { quiet = false } = {}) {
   }
   audio.play().catch(() => setStatus('▶ を押すと再生します'));
   startTrack(station);
-  if (!quiet) reportClick(station.id);
+  if (!quiet) {
+    reportClick(station.id);
+    if ($('#player').hidden) window.scrollTo({ top: 0, behavior: 'smooth' }); // 上の再生中カードを見えるようにする
+  }
   updateMediaSession();
 }
 
