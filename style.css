@@ -15,7 +15,7 @@
   --display: "Archivo", "Noto Sans JP", "Hiragino Sans", sans-serif;
   --body: "Noto Sans JP", "Hiragino Sans", "Archivo", sans-serif;
   --tab-h: 62px;
-  --mini-h: 64px;
+  --mini-h: 86px;
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
 * { box-sizing: border-box; }
@@ -74,11 +74,11 @@ a { color: var(--salmon); }
 }
 
 /* 正方形のアートワーク：3列に並べる（横に流す段もある） */
-.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
-@media (min-width: 600px) { .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 600px) { .grid { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .row-track { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 4px; scrollbar-width: none; scroll-snap-type: x proximity; }
 .row-track::-webkit-scrollbar { display: none; }
-.row-track .tile { flex: 0 0 26%; max-width: 116px; scroll-snap-align: start; }
+.row-track .tile { flex: 0 0 21%; max-width: 96px; scroll-snap-align: start; }
 
 .tile { position: relative; display: block; min-width: 0; padding: 0; border: 0; background: none; text-align: left; }
 .art {
@@ -129,15 +129,17 @@ a { color: var(--salmon); }
   border-radius: 12px; background: #2a2a30; box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
 }
 .mini-open { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; height: 100%; padding: 0; border: 0; background: none; text-align: left; }
-.mini-art { flex: 0 0 46px; }
+.mini-art { flex: 0 0 66px; }
 .mini-art .art { border-radius: 6px; }
 .mini-art .art img.logo { border-radius: 6px; }
 .mini-text { display: flex; flex-direction: column; min-width: 0; }
 .mini-name, .mini-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini-name { font-size: 14px; font-weight: 800; }
-.mini-sub { color: var(--muted); font-size: 12px; }
-.mini-play { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; }
-.mini-play svg { width: 28px; height: 28px; fill: currentColor; }
+.mini-text { gap: 2px; }
+.mini-name { font-size: 15px; font-weight: 800; }
+.mini-sub { color: var(--text); font-size: 13px; font-weight: 700; }
+.mini-where { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-play { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; background: none; }
+.mini-play svg { width: 32px; height: 32px; fill: currentColor; }
 
 /* 下のタブ */
 .tabbar {

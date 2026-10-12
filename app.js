@@ -1,14 +1,14 @@
-import { GENRES, genreLabel } from './genres.js?v=202610121717';
-import { fetchStreamTitle } from './icy.js?v=202610121717';
+import { GENRES, genreLabel } from './genres.js?v=202610121718';
+import { fetchStreamTitle } from './icy.js?v=202610121718';
 import {
   PAGE_SIZE, buildRows, countryStationsPath, fetchJson, flagEmoji, nameSearchPath, reportClick, searchPath, tagSearchPath, toStations,
-} from './radio.js?v=202610121717';
-import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js?v=202610121717';
-import { SleepTimer, formatRemaining } from './timer.js?v=202610121717';
-import { Pomodoro, pomodoroLabel } from './pomodoro.js?v=202610121717';
-import { playChime, unlockChime } from './chime.js?v=202610121717';
-import { stationTimeZone } from './timezone.js?v=202610121717';
-import { fetchArtwork, splitTrack } from './artwork.js?v=202610121717';
+} from './radio.js?v=202610121718';
+import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js?v=202610121718';
+import { SleepTimer, formatRemaining } from './timer.js?v=202610121718';
+import { Pomodoro, pomodoroLabel } from './pomodoro.js?v=202610121718';
+import { playChime, unlockChime } from './chime.js?v=202610121718';
+import { stationTimeZone } from './timezone.js?v=202610121718';
+import { fetchArtwork, splitTrack } from './artwork.js?v=202610121718';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
@@ -567,8 +567,10 @@ function renderNowPlaying() {
   const { song, artist } = state.track ? splitTrack(state.track) : { song: '', artist: '' };
   const tick = () => {
     const where = format ? `${place} · 🕐 現地 ${format.format(new Date())}` : place;
-    // 曲名が分かれば、小さなバーの2行目に 🎵 付きで出す（局名は1行目のまま）
-    $('#mini-sub').textContent = song ? `🎵 ${artist ? `${song} - ${artist}` : song}` : where;
+    // 小さなバー：1行目に局名、曲名が分かれば2行目に 🎵 付きで、最後の行に国と現地時間
+    $('#mini-sub').textContent = song ? `🎵 ${artist ? `${song} - ${artist}` : song}` : '';
+    $('#mini-sub').hidden = !song;
+    $('#mini-where').textContent = where;
     $('#player-meta').textContent = song ? `📻 ${station.name} · ${where}` : where;
   };
   $('#mini').hidden = false;
