@@ -17,9 +17,15 @@ export const countryStationsPath = (code) =>
 export const tagSearchPath = (tag) =>
   `/json/stations/search?${COMMON}&limit=60&tag=${encodeURIComponent(tag)}`;
 
-export function searchPath(genre, offset) {
+// 局名で探す（名前の一部でよい）。人気順
+export function nameSearchPath(query) {
+  const q = (query || '').trim();
+  return q ? `/json/stations/search?${COMMON}&limit=60&name=${encodeURIComponent(q)}` : null;
+}
+
+export function searchPath(genre, offset, limit = PAGE_SIZE) {
   const tag = SEARCH_TAGS[genre];
-  return `/json/stations/search?${COMMON}&limit=${PAGE_SIZE}&offset=${offset}${tag ? `&tag=${tag}` : ''}`;
+  return `/json/stations/search?${COMMON}&limit=${limit}&offset=${offset}${tag ? `&tag=${tag}` : ''}`;
 }
 
 // Radio Browser の並び順（人気順）を保ったまま、https 以外・URLなし・重複を除く
@@ -70,4 +76,16 @@ export async function fetchJson(path) {
 // Radio Browser へ「この局が再生された」と知らせる（人気順の集計に使われる。失敗しても無視）
 export function reportClick(id) {
   fetch(`${API_HOSTS[0]}/json/url/${encodeURIComponent(id)}`).catch(() => {});
+}
+
+// ジャンルごとの段（ホーム）。複数のジャンルを持つ局は上の段に一度だけ出し、局のない段は出さない
+export function buildRows(stations, genreIds, size) {
+  const seen = new Set();
+  const rows = [];
+  for (const genre of genreIds) {
+    const picked = stations.filter((s) => s.genres.includes(genre) && !seen.has(s.id)).slice(0, size);
+    for (const s of picked) seen.add(s.id);
+    if (picked.length) rows.push({ genre, stations: picked });
+  }
+  return rows;
 }

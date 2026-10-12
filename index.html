@@ -18,125 +18,187 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app" id="top">
-    <header class="masthead">
-      <div class="masthead-text">
-        <p class="eyebrow" id="today">SOTO OTO</p>
-        <h1 class="title">ソトオト</h1>
-        <p class="tagline">外で聴く、外国の音。</p>
-      </div>
-      <div class="count-dot" aria-live="polite" title="この国で聞ける局の数">
-        <span id="count-number">–</span>
-      </div>
-    </header>
+  <header class="topbar">
+    <div class="brand">
+      <img src="favicon-32.png" alt="" width="26" height="26">
+      <span class="brand-name">ソトオト</span>
+    </div>
+    <label class="country-pill">
+      <span class="sr-only">国</span>
+      <select id="country" aria-label="国"></select>
+    </label>
+  </header>
 
-    <section class="now card-salmon" aria-label="いま再生中">
-      <div class="now-top">
-        <p class="eyebrow dark" id="now-label">局を選ぶと、ここで再生します</p>
-        <span class="live-pill" id="live-pill" hidden>● LIVE</span>
-      </div>
-      <div class="now-main">
-        <div class="now-body">
-          <p class="now-name" id="now-name">Ready</p>
-          <p class="now-meta" id="now-meta">下の一覧から、聴きたい局を選んでください</p>
-          <p class="now-track" id="now-track" hidden></p>
-          <div class="now-genres" id="now-genres"></div>
-        </div>
-        <div class="now-controls">
-          <button id="play" class="play" aria-label="再生" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M8 5v14l11-7z"/></svg>
-          </button>
-          <button id="now-star" class="round-star" aria-label="お気に入りに登録" disabled>☆</button>
-        </div>
-      </div>
-      <p class="now-status" id="now-status" role="status"></p>
-      <div class="sleep" id="timer">
-        <div class="timer-row">
-          <button id="sleep-toggle" class="sleep-toggle" aria-expanded="false" aria-controls="sleep-options">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
-            <span id="sleep-label">おやすみタイマー</span>
-          </button>
-          <button id="pomodoro-toggle" class="sleep-toggle" aria-pressed="false" title="25分集中・5分休憩をくり返します。動作中に押すと終了します">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c4.4 0 8 3 8 7s-3.6 7-8 7-8-3-8-7 3.6-7 8-7zm-1-5h2v3.2c1.2-.9 2.6-1.3 4-1.2-.6 1.5-2 2.6-3.6 2.9L12 7l-1.4-.1C9 6.6 7.6 5.5 7 4c1.4-.1 2.8.3 4 1.2z"/></svg>
-            <span id="pomodoro-label">ポモドーロ</span>
-          </button>
-        </div>
-        <div class="sleep-options" id="sleep-options" hidden>
-          <button data-minutes="0">オフ</button>
-          <button data-minutes="15">15分</button>
-          <button data-minutes="30">30分</button>
-          <button data-minutes="45">45分</button>
-          <button data-minutes="60">60分</button>
-          <button data-minutes="90">90分</button>
-        </div>
-      </div>
-    </section>
-    <audio id="audio" preload="none"></audio>
+  <main class="app">
+    <!-- ホーム -->
+    <section id="view-home" class="view">
+      <div class="chips" id="genres" role="tablist" aria-label="ジャンル"></div>
 
-    <section class="card" id="favorites-section">
-      <div class="card-head">
-        <p class="eyebrow">FAVORITES</p>
-        <span class="chip">この端末に保存</span>
-      </div>
-      <h2 class="card-title">お気に入り</h2>
-      <div class="favorites" id="favorites"></div>
-    </section>
+      <section class="block" id="fav-block" hidden>
+        <div class="block-head">
+          <div>
+            <p class="eyebrow">QUICK ACCESS</p>
+            <h2>お気に入り</h2>
+          </div>
+          <button type="button" class="pill-button" data-go="library">すべて</button>
+        </div>
+        <div class="grid" id="fav-grid"></div>
+      </section>
 
-    <section class="card" id="recs-section">
-      <div class="card-head">
-        <p class="eyebrow">FOR YOU</p>
-        <span class="chip">この端末の記録から</span>
-      </div>
-      <h2 class="card-title">あなたへのおすすめ</h2>
-      <div class="recs" id="recs"></div>
-    </section>
+      <section class="block" id="recs-block" hidden>
+        <div class="block-head">
+          <div>
+            <p class="eyebrow">FOR YOU</p>
+            <h2>あなたへのおすすめ</h2>
+          </div>
+        </div>
+        <div class="row-track" id="recs"></div>
+      </section>
 
-    <section class="card" id="stations-section">
-      <div class="card-head">
-        <p class="eyebrow">STATIONS</p>
-        <select id="country" class="country" aria-label="国"></select>
-      </div>
-      <h2 class="card-title">ジャンル</h2>
-      <div class="genres" id="genres" role="tablist" aria-label="ジャンル"></div>
-      <ul class="stations" id="stations"></ul>
+      <section class="block" id="recent-block" hidden>
+        <div class="block-head">
+          <div>
+            <p class="eyebrow">RECENT</p>
+            <h2>最近聴いた局</h2>
+          </div>
+        </div>
+        <div class="row-track" id="recent"></div>
+      </section>
+
+      <div id="rows"></div>
+
+      <section class="block" id="grid-block" hidden>
+        <div class="block-head">
+          <div>
+            <p class="eyebrow" id="grid-eyebrow">GENRE</p>
+            <h2 id="grid-title"></h2>
+          </div>
+          <button type="button" class="pill-button" id="grid-back">ホームへ</button>
+        </div>
+        <div class="grid" id="stations"></div>
+        <button id="more" class="more" hidden>さらに表示</button>
+      </section>
       <p class="message" id="message"></p>
-      <button id="more" class="more" hidden>さらに表示</button>
+      <footer class="credit">
+        局の情報: <a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser</a>（https で配信している局のみ）・ジャケット画像: Apple iTunes
+      </footer>
     </section>
 
-    <footer class="footer">
-      局の情報: <a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser</a>（https で配信している局のみ）
-    </footer>
+    <!-- 検索 -->
+    <section id="view-search" class="view" hidden>
+      <h2 class="view-title">検索</h2>
+      <label class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
+        <input id="search-input" type="search" placeholder="局名で探す（例: J-WAVE、BBC、Jazz）" autocomplete="off" enterkeyhint="search" aria-label="局名で探す">
+      </label>
+      <p class="message" id="search-message">世界中のラジオ局から、名前の一部で探せます</p>
+      <div class="grid" id="search-results"></div>
+    </section>
+
+    <!-- ライブラリ -->
+    <section id="view-library" class="view" hidden>
+      <h2 class="view-title">ライブラリ</h2>
+      <section class="block">
+        <div class="block-head"><h2>お気に入り</h2></div>
+        <div class="grid" id="library-favs"></div>
+      </section>
+      <section class="block">
+        <div class="block-head"><h2>最近聴いた局</h2></div>
+        <div class="grid" id="library-recent"></div>
+      </section>
+    </section>
   </main>
 
-  <nav class="bottom-nav" aria-label="移動">
-    <a href="#top" class="active" data-target="top">
+  <!-- 小さな再生バー：押すと大きな再生画面を開く -->
+  <div class="mini" id="mini" hidden>
+    <button type="button" class="mini-open" id="mini-open" aria-label="再生画面を開く">
+      <span class="mini-art" id="mini-art"></span>
+      <span class="mini-text">
+        <span class="mini-name" id="mini-name"></span>
+        <span class="mini-sub" id="mini-sub"></span>
+      </span>
+    </button>
+    <button type="button" class="mini-play" id="mini-play" aria-label="再生">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-path" d="M8 5v14l11-7z"/></svg>
+    </button>
+  </div>
+
+  <nav class="tabbar" aria-label="移動">
+    <button type="button" data-go="home" class="active">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
-      <span>HOME</span>
-    </a>
-    <a href="#favorites-section" data-target="favorites-section">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
-      <span>FAVORITE</span>
-    </a>
+      <span>ホーム</span>
+    </button>
     <button type="button" id="genre-nav" aria-haspopup="dialog" aria-controls="genre-sheet">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg>
-      <span>GENRE</span>
+      <span>ジャンル</span>
     </button>
-    <a href="#stations-section" data-target="stations-section">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h3V9H4zm6.5 0h3V5h-3zM17 18h3v-6h-3z"/></svg>
-      <span>STATIONS</span>
-    </a>
-    <a href="#timer" data-target="timer">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
-      <span>TIMER</span>
-    </a>
+    <button type="button" data-go="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
+      <span>検索</span>
+    </button>
+    <button type="button" data-go="library">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+      <span>ライブラリ</span>
+    </button>
   </nav>
+
+  <!-- 大きな再生画面 -->
+  <section class="player" id="player" role="dialog" aria-modal="true" aria-label="再生中" hidden>
+    <div class="player-bg" id="player-bg"></div>
+    <div class="player-inner">
+      <div class="player-top">
+        <button type="button" class="icon-button" id="player-close" aria-label="閉じる">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 8.6 12 15l6.4-6.4L19.8 10 12 17.8 4.2 10z"/></svg>
+        </button>
+        <p class="eyebrow">NOW PLAYING</p>
+        <span class="live-pill">● LIVE</span>
+      </div>
+      <div class="player-art" id="player-art"></div>
+      <div class="player-text">
+        <p class="player-title" id="player-title"></p>
+        <p class="player-sub" id="player-sub"></p>
+        <p class="player-meta" id="player-meta"></p>
+        <div class="player-genres" id="player-genres"></div>
+      </div>
+      <div class="live-bar"><span></span></div>
+      <div class="player-controls">
+        <button type="button" class="icon-button" id="now-star" aria-label="お気に入りに登録">☆</button>
+        <button type="button" class="big-play" id="play" aria-label="再生">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="play-path" d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button type="button" class="icon-button" id="sleep-toggle" aria-expanded="false" aria-controls="sleep-options" aria-label="おやすみタイマー">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+        </button>
+      </div>
+      <p class="now-status" id="now-status" role="status"></p>
+      <div class="timer-row" id="timer">
+        <span class="timer-chip" id="sleep-label">おやすみタイマー</span>
+        <button type="button" class="timer-chip" id="pomodoro-toggle" aria-pressed="false" title="25分集中・5分休憩をくり返します。動作中に押すと終了します">
+          <span id="pomodoro-label">ポモドーロ</span>
+        </button>
+      </div>
+      <div class="sleep-options" id="sleep-options" hidden>
+        <button data-minutes="0">オフ</button>
+        <button data-minutes="15">15分</button>
+        <button data-minutes="30">30分</button>
+        <button data-minutes="45">45分</button>
+        <button data-minutes="60">60分</button>
+        <button data-minutes="90">90分</button>
+      </div>
+      <div class="up-next">
+        <p class="eyebrow">MORE LIKE THIS</p>
+        <h3>同じジャンルの局</h3>
+        <ul class="queue" id="queue"></ul>
+      </div>
+    </div>
+  </section>
 
   <div class="sheet" id="genre-sheet" role="dialog" aria-modal="true" aria-labelledby="genre-sheet-title" hidden>
     <div class="sheet-panel">
       <div class="sheet-head">
         <div>
           <p class="eyebrow">GENRE</p>
-          <h2 class="card-title" id="genre-sheet-title">ジャンルを選ぶ</h2>
+          <h2 id="genre-sheet-title">ジャンルを選ぶ</h2>
         </div>
         <button type="button" class="sheet-close" id="genre-sheet-close" aria-label="閉じる">×</button>
       </div>
@@ -144,6 +206,7 @@
     </div>
   </div>
 
+  <audio id="audio" preload="none"></audio>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>

@@ -1,17 +1,20 @@
 import { GENRES, genreLabel } from './genres.js';
 import { fetchStreamTitle } from './icy.js';
-import { PAGE_SIZE, countryStationsPath, fetchJson, flagEmoji, reportClick, searchPath, tagSearchPath, toStations } from './radio.js';
+import {
+  PAGE_SIZE, buildRows, countryStationsPath, fetchJson, flagEmoji, nameSearchPath, reportClick, searchPath, tagSearchPath, toStations,
+} from './radio.js';
 import { reasonText, recommend, recordPlay, tasteProfile, topTags } from './recommend.js';
 import { SleepTimer, formatRemaining } from './timer.js';
 import { Pomodoro, pomodoroLabel } from './pomodoro.js';
 import { playChime, unlockChime } from './chime.js';
 import { stationTimeZone } from './timezone.js';
+import { fetchArtwork, splitTrack } from './artwork.js';
 
 const $ = (selector) => document.querySelector(selector);
 const FAVORITES_KEY = 'world-radio-favorites';
 const PREFS_KEY = 'world-radio-prefs';
 const HISTORY_KEY = 'soto-oto-history';
-const RINGS = ['var(--lavender)', 'var(--butter)', 'var(--mint)', 'var(--salmon)'];
+const ROW_SIZE = 15; // ホームの段に並べる局の数
 const PLAY_ICON = 'M8 5v14l11-7z';
 const PAUSE_ICON = 'M7 5h4v14H7zM13 5h4v14h-4z';
 const TRACK_INTERVAL_MS = 20000;
@@ -64,13 +67,17 @@ const state = {
   country: prefs.country,
   genre: prefs.genre,
   pool: [], // 国を選んだときの、その国の全局
-  shown: 0, // 国モードで表示済みの件数
-  nextOffset: null, // すべての国モードで次に取る位置
+  shown: 0, // ジャンル表示で出した件数（国を選んだとき）
+  nextOffset: null, // すべての国で、次に取る位置
+  known: new Map(), // 画面に出した局（同じジャンルの局の一覧に使う）
   current: null,
+  track: null, // 再生中の曲名（取れる局だけ）
+  cover: null, // 再生中の曲のジャケット画像
   hls: null,
   token: 0,
   trackTimer: null,
   trackToken: 0,
+  searchToken: 0,
 };
 const sleep = new SleepTimer();
 const pomodoro = new Pomodoro();
@@ -90,34 +97,94 @@ const countryName = (code, fallback) => {
     return fallback || code;
   }
 };
-const ringFor = (id) => RINGS[[...id].reduce((n, ch) => n + ch.charCodeAt(0), 0) % RINGS.length];
+const hueFor = (id) => [...(id || '')].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) % 360, 7);
 const isFavorite = (id) => favorites.some((s) => s.id === id);
+const recentStations = () => Object.values(history).sort((a, b) => b.lastAt - a.lastAt).map((e) => e.station);
 
-function logoElement(station) {
-  // ロゴ画像がない・読めないときは、文字ではなくラジオの絵を出す
-  const initials = () => {
-    const div = document.createElement('div');
-    div.className = 'logo initials';
-    div.style.setProperty('--ring', ringFor(station.id));
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('aria-hidden', 'true');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', RADIO_ICON);
-    svg.append(path);
-    div.append(svg);
-    return div;
-  };
-  if (!station.logo) return initials();
-  const img = document.createElement('img');
-  img.className = 'logo';
-  img.alt = '';
-  img.loading = 'lazy';
-  img.referrerPolicy = 'no-referrer';
-  img.src = station.logo;
-  img.style.setProperty('--ring', ringFor(station.id));
-  img.addEventListener('error', () => img.replaceWith(initials()), { once: true });
-  return img;
+function svgIcon(d, className) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  if (className) svg.setAttribute('class', className);
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', d);
+  svg.append(path);
+  return svg;
+}
+
+// 正方形のアートワーク：局の色の背景にロゴ。曲のジャケットがあればそれを全面に
+function artElement(station, cover = null) {
+  const art = document.createElement('div');
+  art.className = 'art';
+  art.style.setProperty('--hue', hueFor(station.id));
+  const radio = () => svgIcon(RADIO_ICON, 'radio-icon');
+  if (station.logo) {
+    const img = document.createElement('img');
+    img.className = 'logo';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    img.src = station.logo;
+    img.addEventListener('error', () => img.replaceWith(radio()), { once: true });
+    art.append(img);
+  } else {
+    art.append(radio());
+  }
+  if (cover) {
+    const img = document.createElement('img');
+    img.className = 'cover';
+    img.alt = '';
+    img.src = cover;
+    img.addEventListener('error', () => img.remove(), { once: true });
+    art.append(img);
+  }
+  return art;
+}
+
+function remember(stations) {
+  for (const s of stations) state.known.set(s.id, s);
+  return stations;
+}
+
+// 一覧のタイル：アートワークに国旗と局名を重ね、右上に ☆
+function tile(station, reason = '') {
+  const box = document.createElement('div');
+  box.className = 'tile';
+  box.dataset.id = station.id;
+  box.classList.toggle('playing', state.current?.id === station.id);
+  const main = document.createElement('button');
+  main.type = 'button';
+  main.className = 'tile-main';
+  main.setAttribute('aria-label', `${station.name}（${countryName(station.country, station.countryName)}）を再生`);
+  const art = artElement(station);
+  const flag = document.createElement('span');
+  flag.className = 'tile-flag';
+  flag.textContent = station.flag;
+  const label = document.createElement('span');
+  label.className = 'tile-label';
+  label.textContent = station.name;
+  art.append(flag, label);
+  main.append(art);
+  main.addEventListener('click', () => play(station));
+  const star = document.createElement('button');
+  star.type = 'button';
+  star.className = 'tile-star';
+  star.addEventListener('click', () => toggleFavorite(station));
+  paintStar(star, isFavorite(station.id));
+  box.append(main, star);
+  if (reason) {
+    const why = document.createElement('span');
+    why.className = 'tile-reason';
+    why.textContent = reason;
+    box.append(why);
+  }
+  return box;
+}
+
+function paintStar(star, on) {
+  star.textContent = on ? '★' : '☆';
+  star.classList.toggle('on', on);
+  star.setAttribute('aria-label', on ? 'お気に入りから外す' : 'お気に入りに登録');
 }
 
 function badge(id) {
@@ -137,37 +204,72 @@ function setStatus(text, isError = false) {
   el.classList.toggle('error', isError);
 }
 
-// --- お気に入り ---
+function emptyNote(text) {
+  const p = document.createElement('p');
+  p.className = 'message';
+  p.style.gridColumn = '1 / -1';
+  p.textContent = text;
+  return p;
+}
+
+// --- 画面の切り替え（ホーム・検索・ライブラリ） ---
+function showView(name) {
+  for (const view of ['home', 'search', 'library']) $(`#view-${view}`).hidden = view !== name;
+  for (const button of document.querySelectorAll('.tabbar [data-go]')) {
+    button.classList.toggle('active', button.dataset.go === name);
+  }
+  if (name === 'library') renderLibrary();
+  if (name === 'search') setTimeout(() => $('#search-input').focus(), 50);
+  window.scrollTo({ top: 0 });
+}
+for (const button of document.querySelectorAll('[data-go]')) {
+  button.addEventListener('click', () => showView(button.dataset.go));
+}
+
+// --- お気に入り・最近聴いた局 ---
 function toggleFavorite(station) {
   favorites = isFavorite(station.id) ? favorites.filter((s) => s.id !== station.id) : [...favorites, station];
   save(FAVORITES_KEY, favorites);
   renderFavorites();
   refreshStars();
   renderRecommendations();
+  if (!$('#view-library').hidden) renderLibrary();
+}
+
+function renderFavorites() {
+  $('#fav-block').hidden = !favorites.length || state.genre !== 'all';
+  $('#fav-grid').replaceChildren(...favorites.slice(0, 9).map((s) => tile(s)));
+}
+
+function renderRecent() {
+  const recent = recentStations().slice(0, 12);
+  $('#recent-block').hidden = !recent.length || state.genre !== 'all';
+  $('#recent').replaceChildren(...recent.map((s) => tile(s)));
+}
+
+function renderLibrary() {
+  $('#library-favs').replaceChildren(...(favorites.length
+    ? favorites.map((s) => tile(s))
+    : [emptyNote('局の ☆ を押すと、ここに並びます')]));
+  const recent = recentStations();
+  $('#library-recent').replaceChildren(...(recent.length
+    ? recent.map((s) => tile(s))
+    : [emptyNote('聴いた局がここに並びます')]));
+}
+
+function refreshStars() {
+  for (const box of document.querySelectorAll('.tile')) {
+    paintStar(box.querySelector('.tile-star'), isFavorite(box.dataset.id));
+    box.classList.toggle('playing', state.current?.id === box.dataset.id);
+  }
+  const star = $('#now-star');
+  const on = Boolean(state.current) && isFavorite(state.current.id);
+  star.textContent = on ? '★' : '☆';
+  star.classList.toggle('on', on);
+  star.setAttribute('aria-label', on ? 'お気に入りから外す' : 'お気に入りに登録');
 }
 
 // --- おすすめ ---
-function emptyNote(text) {
-  const p = document.createElement('p');
-  p.className = 'empty';
-  p.textContent = text;
-  return p;
-}
-
-function recCard({ station, reasons }) {
-  const card = document.createElement('button');
-  card.className = 'rec-card';
-  const name = document.createElement('p');
-  name.className = 'rec-name';
-  name.textContent = station.name;
-  const reason = document.createElement('p');
-  reason.className = 'rec-reason';
-  reason.textContent = `${station.flag} ${reasonText(reasons)}`.trim();
-  card.append(logoElement(station), name, reason);
-  card.addEventListener('click', () => play(station));
-  return card;
-}
-
 async function tagStations(tag) {
   if (!recCache.has(tag)) {
     try {
@@ -181,114 +283,55 @@ async function tagStations(tag) {
 
 async function renderRecommendations() {
   const token = ++recToken;
-  const box = $('#recs');
   const profile = tasteProfile(history, favorites);
   const tags = topTags(profile, 3);
   if (!tags.length) {
-    box.replaceChildren(emptyNote('何局か聴くと、ここにおすすめが出ます'));
+    $('#recs-block').hidden = true;
     return;
   }
   const lists = await Promise.all(tags.map(tagStations));
   if (token !== recToken) return;
   const exclude = new Set([...Object.keys(history), ...favorites.map((s) => s.id)]);
   const recs = recommend(lists.flat(), profile, exclude, 12);
-  box.replaceChildren(...(recs.length
-    ? recs.map(recCard)
-    : [emptyNote('似ている局が見つかりませんでした。ほかの局も聴いてみてください')]));
+  remember(recs.map((r) => r.station));
+  $('#recs-block').hidden = !recs.length || state.genre !== 'all';
+  $('#recs').replaceChildren(...recs.map(({ station, reasons }) => tile(station, reasonText(reasons))));
 }
 
-function renderFavorites() {
-  const box = $('#favorites');
-  box.replaceChildren();
-  if (!favorites.length) {
-    const p = document.createElement('p');
-    p.className = 'empty';
-    p.textContent = '局の ☆ を押すと、ここに並びます';
-    box.append(p);
-    return;
-  }
-  for (const station of favorites) {
-    const button = document.createElement('button');
-    button.className = 'fav';
-    button.classList.toggle('playing', state.current?.id === station.id);
-    button.title = station.name; // アイコンだけなので、局名は長押し・マウスを重ねたときに出す
-    button.setAttribute('aria-label', station.name);
-    button.append(logoElement(station));
-    button.addEventListener('click', () => play(station));
-    box.append(button);
-  }
+// --- ジャンル ---
+function genreCounts() {
+  if (state.country === 'ALL') return null;
+  return Object.fromEntries(
+    [['all', state.pool.length], ...GENRES.map((g) => [g.id, state.pool.filter((s) => s.genres.includes(g.id)).length])],
+  );
 }
 
-function refreshStars() {
-  for (const li of $('#stations').children) {
-    const on = isFavorite(li.dataset.id);
-    const star = li.querySelector('.star');
-    star.textContent = on ? '★' : '☆';
-    star.classList.toggle('on', on);
-    star.setAttribute('aria-label', on ? 'お気に入りから外す' : 'お気に入りに登録');
-    li.classList.toggle('playing', state.current?.id === li.dataset.id);
-  }
-  const star = $('#now-star');
-  const on = Boolean(state.current) && isFavorite(state.current.id);
-  star.disabled = !state.current;
-  star.textContent = on ? '★' : '☆';
-  star.classList.toggle('on', on);
-  star.setAttribute('aria-label', on ? 'お気に入りから外す' : 'お気に入りに登録');
-}
-
-// --- 局の一覧 ---
-function stationRow(station) {
-  const li = document.createElement('li');
-  li.className = 'station';
-  li.dataset.id = station.id;
-  const main = document.createElement('button');
-  main.className = 'station-main';
-  const info = document.createElement('span');
-  info.className = 'info';
-  const name = document.createElement('span');
-  name.className = 'name';
-  name.textContent = station.name;
-  const meta = document.createElement('span');
-  meta.className = 'meta';
-  meta.textContent = `${station.flag} ${countryName(station.country, station.countryName)}`.trim();
-  info.append(name, meta);
-  main.append(logoElement(station), info, ...station.genres.slice(0, 2).map(badge));
-  main.addEventListener('click', () => play(station));
-  const star = document.createElement('button');
-  star.className = 'star';
-  star.addEventListener('click', () => toggleFavorite(station));
-  li.append(main, star);
-  return li;
+function pickGenre(id) {
+  state.genre = id;
+  prefs.genre = id;
+  save(PREFS_KEY, prefs);
+  closeGenreSheet();
+  showView('home');
+  reload(false);
 }
 
 function renderGenres() {
-  const counts = state.country === 'ALL' ? null : Object.fromEntries(
-    [['all', state.pool.length], ...GENRES.map((g) => [g.id, state.pool.filter((s) => s.genres.includes(g.id)).length])],
-  );
+  const counts = genreCounts();
   const box = $('#genres');
   const sheet = $('#sheet-genres');
   box.replaceChildren();
   sheet.replaceChildren();
   for (const genre of [{ id: 'all', label: 'すべて', en: 'ALL' }, ...GENRES]) {
-    const pick = (fromSheet) => {
-      state.genre = genre.id;
-      prefs.genre = genre.id;
-      save(PREFS_KEY, prefs);
-      if (fromSheet) {
-        closeGenreSheet();
-        $('#stations-section').scrollIntoView();
-      }
-      reload(false);
-    };
-    sheet.append(genreTile(genre, counts ? counts[genre.id] : null, () => pick(true)));
-    if (counts && counts[genre.id] === 0 && genre.id !== state.genre) continue; // 上の横並びでは0局を省く
+    sheet.append(genreTile(genre, counts ? counts[genre.id] : null, () => pickGenre(genre.id)));
+    if (counts && counts[genre.id] === 0 && genre.id !== state.genre) continue; // 0局のジャンルはチップに出さない
     const chip = document.createElement('button');
-    chip.className = 'genre';
+    chip.type = 'button';
+    chip.className = 'chip';
     chip.setAttribute('role', 'tab');
     chip.setAttribute('aria-selected', String(genre.id === state.genre));
     chip.classList.toggle('active', genre.id === state.genre);
-    chip.textContent = counts ? `${genre.label} ${counts[genre.id]}` : genre.label;
-    chip.addEventListener('click', () => pick(false));
+    chip.textContent = genre.label;
+    chip.addEventListener('click', () => pickGenre(genre.id));
     box.append(chip);
   }
 }
@@ -296,22 +339,17 @@ function renderGenres() {
 // 選択画面のタイル：色付きアイコン、大きな局数、英語名と日本語名
 function genreTile(genre, count, onPick) {
   const selected = genre.id === state.genre;
-  const tile = document.createElement('button');
-  tile.className = 'genre-tile';
-  tile.classList.toggle('active', selected);
-  tile.classList.toggle('empty', count === 0);
-  tile.style.setProperty('--tone', GENRE_TONES[genre.id]);
+  const tileEl = document.createElement('button');
+  tileEl.type = 'button';
+  tileEl.className = 'genre-tile';
+  tileEl.classList.toggle('active', selected);
+  tileEl.classList.toggle('empty', count === 0);
+  tileEl.style.setProperty('--tone', GENRE_TONES[genre.id]);
   const top = document.createElement('div');
   top.className = 'tile-top';
   const icon = document.createElement('span');
   icon.className = 'tile-icon';
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', GENRE_ICONS[genre.id]);
-  svg.append(path);
-  icon.append(svg);
+  icon.append(svgIcon(GENRE_ICONS[genre.id]));
   top.append(icon);
   if (selected) {
     const pill = document.createElement('span');
@@ -328,34 +366,75 @@ function genreTile(genre, count, onPick) {
   const ja = document.createElement('p');
   ja.className = 'tile-ja';
   ja.textContent = genre.label;
-  tile.append(top, number, en, ja);
-  tile.addEventListener('click', onPick);
-  return tile;
+  tileEl.append(top, number, en, ja);
+  tileEl.addEventListener('click', onPick);
+  return tileEl;
 }
 
-const matchesGenre = (station) => state.genre === 'all' || station.genres.includes(state.genre);
+// --- 局の一覧 ---
+// 「すべて」のとき：ジャンルごとの段を横に流して並べる
+async function showRows(token) {
+  const ids = GENRES.map((g) => g.id);
+  let groups;
+  if (state.country === 'ALL') {
+    // 世界の局はジャンルごとに人気順で取る
+    const lists = await Promise.all(ids.map((id) => fetchJson(searchPath(id, 0, 40)).then(toStations).catch(() => [])));
+    if (token !== state.token) return;
+    groups = buildRows(remember(lists.flat()), ids, ROW_SIZE);
+  } else {
+    groups = buildRows(state.pool, ids, ROW_SIZE);
+  }
+  $('#rows').replaceChildren(...groups.map(({ genre, stations }) => {
+    const section = document.createElement('section');
+    section.className = 'block';
+    const head = document.createElement('div');
+    head.className = 'block-head';
+    const title = document.createElement('h2');
+    title.textContent = genreLabel(genre);
+    const counts = genreCounts();
+    if (counts) {
+      const count = document.createElement('span');
+      count.className = 'row-count';
+      count.textContent = counts[genre].toLocaleString();
+      title.append(count);
+    }
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'pill-button';
+    more.textContent = 'すべて見る ›';
+    more.addEventListener('click', () => pickGenre(genre));
+    head.append(title, more);
+    const track = document.createElement('div');
+    track.className = 'row-track';
+    track.append(...stations.map((s) => tile(s)));
+    section.append(head, track);
+    return section;
+  }));
+  setMessage(groups.length ? '' : 'この国の局が見つかりませんでした');
+}
 
+const matchesGenre = (station) => station.genres.includes(state.genre);
+
+// ジャンルを選んだとき：3列のタイル
 async function showMore(token) {
-  const list = $('#stations');
+  const grid = $('#stations');
   $('#more').disabled = true;
   try {
     if (state.country === 'ALL') {
       const offset = state.nextOffset ?? 0;
       const raw = await fetchJson(searchPath(state.genre, offset));
       if (token !== state.token) return;
-      const stations = toStations(raw).filter(matchesGenre);
-      list.append(...stations.map(stationRow));
+      grid.append(...remember(toStations(raw).filter(matchesGenre)).map((s) => tile(s)));
       state.nextOffset = raw.length >= PAGE_SIZE ? offset + PAGE_SIZE : null;
       $('#more').hidden = state.nextOffset === null;
     } else {
       const matched = state.pool.filter(matchesGenre);
-      list.append(...matched.slice(state.shown, state.shown + PAGE_SIZE).map(stationRow));
+      grid.append(...matched.slice(state.shown, state.shown + PAGE_SIZE).map((s) => tile(s)));
       state.shown += PAGE_SIZE;
       $('#more').hidden = state.shown >= matched.length;
     }
-    refreshStars();
     const hint = state.country === 'ALL' ? '' : '国を「🌐 すべての国」にすると、世界の局から探せます';
-    setMessage(list.children.length ? '' : `この国には、このジャンルの局がありません。${hint}`);
+    setMessage(grid.children.length ? '' : `この国には、このジャンルの局がありません。${hint}`);
   } catch (error) {
     if (token === state.token) setMessage(`局の一覧を取得できませんでした（${error.message}）。通信状態を確かめて、もう一度選んでください`);
   } finally {
@@ -367,6 +446,7 @@ async function showMore(token) {
 async function reload(refetch) {
   const token = ++state.token;
   $('#stations').replaceChildren();
+  $('#rows').replaceChildren();
   $('#more').hidden = true;
   state.shown = 0;
   state.nextOffset = null;
@@ -375,16 +455,27 @@ async function reload(refetch) {
     try {
       const raw = await fetchJson(countryStationsPath(state.country));
       if (token !== state.token) return;
-      state.pool = toStations(raw);
+      state.pool = remember(toStations(raw));
     } catch (error) {
       if (token === state.token) setMessage(`局の一覧を取得できませんでした（${error.message}）。通信状態を確かめて、もう一度選んでください`);
       return;
     }
   }
   if (state.country === 'ALL') state.pool = [];
-  $('#count-number').textContent = state.country === 'ALL' ? '∞' : state.pool.length.toLocaleString();
   renderGenres();
-  await showMore(token);
+  const all = state.genre === 'all';
+  $('#grid-block').hidden = all;
+  $('#rows').hidden = !all;
+  renderFavorites();
+  renderRecent();
+  renderRecommendations();
+  if (all) {
+    await showRows(token);
+  } else {
+    $('#grid-title').textContent = genreLabel(state.genre);
+    $('#grid-eyebrow').textContent = (GENRES.find((g) => g.id === state.genre)?.en || 'GENRE');
+    await showMore(token);
+  }
 }
 
 async function loadCountries() {
@@ -400,17 +491,53 @@ async function loadCountries() {
     .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   const select = $('#country');
   select.replaceChildren(
-    new Option('🌐 すべての国（人気順）', 'ALL'),
+    new Option('🌐 すべての国', 'ALL'),
     ...countries.map((c) => new Option(`${flagEmoji(c.code)} ${c.name}`, c.code)),
   );
   if (state.country !== 'ALL' && !byCode.has(state.country)) state.country = 'ALL';
   select.value = state.country;
 }
 
+// --- 検索 ---
+let searchTimer = null;
+$('#search-input').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 400); // 打ち終わるのを少し待ってから探す
+});
+$('#search-input').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    clearTimeout(searchTimer);
+    runSearch();
+    event.target.blur(); // キーボードを閉じる
+  }
+});
+
+async function runSearch() {
+  const token = ++state.searchToken;
+  const path = nameSearchPath($('#search-input').value);
+  const results = $('#search-results');
+  const message = $('#search-message');
+  if (!path) {
+    results.replaceChildren();
+    message.textContent = '世界中のラジオ局から、名前の一部で探せます';
+    return;
+  }
+  message.textContent = '探しています…';
+  try {
+    const stations = toStations(await fetchJson(path));
+    if (token !== state.searchToken) return;
+    results.replaceChildren(...remember(stations).map((s) => tile(s)));
+    message.textContent = stations.length ? '' : '見つかりませんでした。別の書き方（英語など）で試してください';
+  } catch (error) {
+    if (token === state.searchToken) message.textContent = `探せませんでした（${error.message}）。通信状態を確かめてください`;
+  }
+}
+
 // --- 再生 ---
 function setPlayIcon(playing) {
-  $('#play-icon').setAttribute('d', playing ? PAUSE_ICON : PLAY_ICON);
+  for (const path of document.querySelectorAll('.play-path')) path.setAttribute('d', playing ? PAUSE_ICON : PLAY_ICON);
   $('#play').setAttribute('aria-label', playing ? '一時停止' : '再生');
+  $('#mini-play').setAttribute('aria-label', playing ? '一時停止' : '再生');
 }
 
 function stopStream() {
@@ -424,13 +551,91 @@ function stopStream() {
   audio.load();
 }
 
-// --- 曲名（放送局が許可している場合だけ） ---
+// 再生中の表示（小さなバーと大きな再生画面）。曲名やジャケットが分かったら呼び直す
+let clockTimer = null;
+function renderNowPlaying() {
+  const station = state.current;
+  if (!station) return;
+  const place = `${station.flag} ${countryName(station.country, station.countryName)}`.trim();
+  let format = null;
+  try {
+    const timeZone = stationTimeZone(station);
+    if (timeZone) format = new Intl.DateTimeFormat('ja-JP', { timeZone, hour: '2-digit', minute: '2-digit' });
+  } catch {
+    format = null; // ブラウザが知らないタイムゾーン
+  }
+  const { song, artist } = state.track ? splitTrack(state.track) : { song: '', artist: '' };
+  const tick = () => {
+    const where = format ? `${place} · 🕐 現地 ${format.format(new Date())}` : place;
+    $('#mini-sub').textContent = song ? `${station.name} · ${where}` : where;
+    $('#player-meta').textContent = song ? `📻 ${station.name} · ${where}` : where;
+  };
+  $('#mini').hidden = false;
+  $('#mini-name').textContent = song || station.name;
+  $('#mini-art').replaceChildren(artElement(station, state.cover));
+  $('#player-art').replaceChildren(artElement(station, state.cover));
+  $('#player').style.setProperty('--hue', hueFor(station.id));
+  $('#player-title').textContent = song || station.name;
+  $('#player-sub').textContent = song ? artist : '';
+  $('#player-sub').hidden = !(song && artist);
+  $('#player-genres').replaceChildren(...station.genres.slice(0, 3).map(badge));
+  clearInterval(clockTimer);
+  tick();
+  clockTimer = setInterval(tick, 30000);
+}
+
+// 同じジャンルの局（画面に出したことのある局から）
+function renderQueue() {
+  const station = state.current;
+  const genre = station.genres[0];
+  const others = [...state.pool, ...state.known.values()]
+    .filter((s, i, list) => s.id !== station.id && s.genres.includes(genre) && list.findIndex((t) => t.id === s.id) === i)
+    .slice(0, 12);
+  $('#queue').replaceChildren(...others.map((s) => {
+    const li = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    const art = document.createElement('span');
+    art.className = 'q-art';
+    art.append(artElement(s));
+    const text = document.createElement('span');
+    text.className = 'q-text';
+    const name = document.createElement('span');
+    name.className = 'q-name';
+    name.textContent = s.name;
+    const sub = document.createElement('span');
+    sub.className = 'q-sub';
+    sub.textContent = `${s.flag} ${countryName(s.country, s.countryName)} · ${s.genres.map(genreLabel).slice(0, 2).join('・')}`;
+    text.append(name, sub);
+    button.append(art, text);
+    button.addEventListener('click', () => {
+      play(s);
+      $('#player').scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    li.append(button);
+    return li;
+  }));
+  $('.up-next').hidden = !others.length;
+}
+
+function updateMediaSession() {
+  if (!('mediaSession' in navigator) || !state.current) return;
+  const station = state.current;
+  const { song, artist } = state.track ? splitTrack(state.track) : { song: '', artist: '' };
+  const image = state.cover || station.logo;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: song || station.name,
+    artist: song ? (artist || station.name) : countryName(station.country, station.countryName),
+    album: song ? station.name : 'ソトオト',
+    artwork: image ? [{ src: image, sizes: '512x512' }] : [],
+  });
+}
+
+// --- 曲名とジャケット（放送局が許可している場合だけ） ---
 function stopTrack() {
   clearInterval(state.trackTimer);
   state.trackTimer = null;
   state.trackToken += 1;
-  $('#now-track').hidden = true;
-  $('#now-track').textContent = '';
 }
 
 function startTrack(station) {
@@ -445,95 +650,31 @@ function startTrack(station) {
       if (token === state.trackToken) stopTrack(); // 許可されていない局：以後は問い合わせない
       return;
     }
-    if (token !== state.trackToken) return;
-    $('#now-track').textContent = title ? `🎵 ${title}` : '';
-    $('#now-track').hidden = !title;
-    if (title && 'mediaSession' in navigator && navigator.mediaSession.metadata) {
-      navigator.mediaSession.metadata.title = title;
-      navigator.mediaSession.metadata.artist = station.name;
-    }
+    if (token !== state.trackToken || title === state.track) return;
+    state.track = title;
+    state.cover = null;
+    renderNowPlaying();
+    updateMediaSession();
+    const cover = title ? await fetchArtwork(title) : null;
+    if (token !== state.trackToken || !cover || state.track !== title) return;
+    state.cover = cover;
+    renderNowPlaying();
+    updateMediaSession();
   };
   refresh();
   state.trackTimer = setInterval(refresh, TRACK_INTERVAL_MS);
-}
-
-// --- おやすみタイマー ---
-function renderSleep() {
-  const toggle = $('#sleep-toggle');
-  toggle.classList.toggle('on', sleep.active);
-  $('#sleep-label').textContent = sleep.active ? `残り ${formatRemaining(sleep.remainingMs())}` : 'おやすみタイマー';
-}
-
-function checkSleep() {
-  if (!sleep.expired()) return;
-  sleep.cancel();
-  $('#audio').pause();
-  stopTrack();
-  setStatus('おやすみタイマーで停止しました');
-  for (const b of $('#sleep-options').children) b.classList.toggle('selected', b.dataset.minutes === '0');
-  renderSleep();
-}
-
-// quiet: ポモドーロの再開など、画面の位置を動かさず、再生回数も数えないとき
-// --- ポモドーロ ---
-function renderPomodoro() {
-  const toggle = $('#pomodoro-toggle');
-  toggle.classList.toggle('on', pomodoro.active);
-  toggle.setAttribute('aria-pressed', String(pomodoro.active));
-  $('#pomodoro-label').textContent = pomodoroLabel(pomodoro);
-}
-
-// 休憩に入るとラジオを止め、集中に戻ると（休憩前に流れていれば）再開する
-function checkPomodoro() {
-  const phase = pomodoro.advance();
-  if (phase === 'short' || phase === 'long') {
-    const audio = $('#audio');
-    state.resumeAfterBreak = !audio.paused;
-    audio.pause();
-    playChime('rest');
-    setStatus(phase === 'long' ? '長い休憩（15分）です。ラジオを止めました' : '休憩（5分）です。ラジオを止めました');
-  } else if (phase === 'focus') {
-    playChime('focus');
-    if (state.current && state.resumeAfterBreak) {
-      setTimeout(() => play(state.current, { quiet: true }), 1200); // ベルが聞こえてから再開する
-    }
-    setStatus('集中を再開しました');
-  }
-  renderPomodoro();
-}
-
-// 国名の横に局の現地時間（30秒ごとに更新）。場所が分からず決められない局は国名だけ
-let clockTimer = null;
-function showLocalTime(station) {
-  clearInterval(clockTimer);
-  const place = `${station.flag} ${countryName(station.country, station.countryName)}`.trim();
-  let format = null;
-  try {
-    const timeZone = stationTimeZone(station);
-    if (timeZone) format = new Intl.DateTimeFormat('ja-JP', { timeZone, hour: '2-digit', minute: '2-digit' });
-  } catch {
-    format = null; // ブラウザが知らないタイムゾーン
-  }
-  const tick = () => {
-    $('#now-meta').textContent = format ? `${place}　🕐 現地 ${format.format(new Date())}` : place;
-  };
-  tick();
-  if (format) clockTimer = setInterval(tick, 30000);
 }
 
 function play(station, { quiet = false } = {}) {
   const audio = $('#audio');
   stopStream();
   state.current = station;
+  state.track = null;
+  state.cover = null;
   state.recorded = quiet; // ポモドーロの再開などは、聴いた回数に数えない
-  $('#now-label').textContent = 'NOW PLAYING';
-  $('#live-pill').hidden = false;
-  $('#now-name').textContent = station.name;
-  showLocalTime(station);
-  $('#now-genres').replaceChildren(...station.genres.slice(0, 3).map(badge));
-  $('#play').disabled = false;
+  renderNowPlaying();
+  renderQueue();
   setStatus('接続中…');
-  renderFavorites();
   refreshStars();
 
   const isHls = station.url.includes('.m3u8');
@@ -549,18 +690,8 @@ function play(station, { quiet = false } = {}) {
   }
   audio.play().catch(() => setStatus('▶ を押すと再生します'));
   startTrack(station);
-  if (!quiet) {
-    reportClick(station.id);
-    window.scrollTo({ top: 0 }); // 再生中のカードを見えるようにする
-  }
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: station.name,
-      artist: countryName(station.country, station.countryName),
-      album: 'ソトオト',
-      artwork: station.logo ? [{ src: station.logo, sizes: '256x256' }] : [],
-    });
-  }
+  if (!quiet) reportClick(station.id);
+  updateMediaSession();
 }
 
 function failed() {
@@ -575,6 +706,7 @@ audio.addEventListener('playing', () => {
     state.recorded = true;
     history = recordPlay(history, state.current, Date.now());
     save(HISTORY_KEY, history);
+    renderRecent();
     renderRecommendations();
   }
   setStatus('');
@@ -590,7 +722,7 @@ audio.addEventListener('error', () => {
   if (audio.getAttribute('src')) failed();
 });
 
-$('#play').addEventListener('click', () => {
+function togglePlay() {
   if (!state.current) return;
   if (audio.paused) {
     if (!audio.getAttribute('src') && !state.hls) play(state.current);
@@ -598,12 +730,50 @@ $('#play').addEventListener('click', () => {
   } else {
     audio.pause();
   }
+}
+$('#play').addEventListener('click', togglePlay);
+$('#mini-play').addEventListener('click', togglePlay);
+
+// 大きな再生画面
+function openPlayer() {
+  $('#player').hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('#player-close').focus();
+}
+function closePlayer() {
+  $('#player').hidden = true;
+  document.body.style.overflow = '';
+}
+$('#mini-open').addEventListener('click', openPlayer);
+$('#player-close').addEventListener('click', closePlayer);
+$('#now-star').addEventListener('click', () => {
+  if (state.current) toggleFavorite(state.current);
 });
-$('#sleep-toggle').addEventListener('click', () => {
+
+// --- おやすみタイマー ---
+function renderSleep() {
+  $('#sleep-toggle').classList.toggle('on', sleep.active);
+  $('#sleep-label').classList.toggle('on', sleep.active);
+  $('#sleep-label').textContent = sleep.active ? `🌙 残り ${formatRemaining(sleep.remainingMs())}` : 'おやすみタイマー';
+}
+
+function checkSleep() {
+  if (!sleep.expired()) return;
+  sleep.cancel();
+  audio.pause();
+  stopTrack();
+  setStatus('おやすみタイマーで停止しました');
+  for (const b of $('#sleep-options').children) b.classList.toggle('selected', b.dataset.minutes === '0');
+  renderSleep();
+}
+
+function toggleSleepOptions() {
   const options = $('#sleep-options');
   options.hidden = !options.hidden;
   $('#sleep-toggle').setAttribute('aria-expanded', String(!options.hidden));
-});
+}
+$('#sleep-toggle').addEventListener('click', toggleSleepOptions);
+$('#sleep-label').addEventListener('click', toggleSleepOptions);
 for (const button of $('#sleep-options').children) {
   button.addEventListener('click', () => {
     const minutes = Number(button.dataset.minutes);
@@ -615,6 +785,48 @@ for (const button of $('#sleep-options').children) {
     renderSleep();
   });
 }
+
+// --- ポモドーロ ---
+function renderPomodoro() {
+  const toggle = $('#pomodoro-toggle');
+  toggle.classList.toggle('on', pomodoro.active);
+  toggle.setAttribute('aria-pressed', String(pomodoro.active));
+  $('#pomodoro-label').textContent = pomodoroLabel(pomodoro);
+}
+
+// 休憩に入るとラジオを止め、集中に戻ると（休憩前に流れていれば）再開する
+function checkPomodoro() {
+  const phase = pomodoro.advance();
+  if (phase === 'short' || phase === 'long') {
+    state.resumeAfterBreak = !audio.paused;
+    audio.pause();
+    playChime('rest');
+    setStatus(phase === 'long' ? '長い休憩（15分）です。ラジオを止めました' : '休憩（5分）です。ラジオを止めました');
+  } else if (phase === 'focus') {
+    playChime('focus');
+    if (state.current && state.resumeAfterBreak) {
+      setTimeout(() => play(state.current, { quiet: true }), 1200); // ベルが聞こえてから再開する
+    }
+    setStatus('集中を再開しました');
+  }
+  renderPomodoro();
+}
+
+$('#pomodoro-toggle').addEventListener('click', () => {
+  if (pomodoro.active) {
+    pomodoro.stop();
+    state.resumeAfterBreak = false;
+    setStatus('ポモドーロを終了しました');
+  } else {
+    unlockChime(); // iPhone ではこの操作のときに音の準備をしておく
+    pomodoro.start();
+    playChime('focus');
+    if (state.current && audio.paused) play(state.current, { quiet: true });
+    setStatus('集中スタート（25分）');
+  }
+  renderPomodoro();
+});
+
 setInterval(() => {
   if (sleep.active) {
     renderSleep();
@@ -626,51 +838,23 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) checkPomodoro(); // 画面を開き直したときに追いつく
 });
 
-$('#pomodoro-toggle').addEventListener('click', () => {
-  if (pomodoro.active) {
-    pomodoro.stop();
-    state.resumeAfterBreak = false;
-    setStatus('ポモドーロを終了しました');
-  } else {
-    unlockChime(); // iPhone ではこの操作のときに音の準備をしておく
-    pomodoro.start();
-    playChime('focus');
-    if (state.current && $('#audio').paused) play(state.current, { quiet: true });
-    setStatus('集中スタート（25分）');
-  }
-  renderPomodoro();
-});
-
-$('#now-star').addEventListener('click', () => {
-  if (state.current) toggleFavorite(state.current);
-});
+// --- 国・ジャンルの選択 ---
 $('#country').addEventListener('change', (event) => {
   state.country = event.target.value;
   prefs.country = state.country;
   save(PREFS_KEY, prefs);
+  showView('home');
   reload(true);
 });
 $('#more').addEventListener('click', () => showMore(state.token));
+$('#grid-back').addEventListener('click', () => pickGenre('all'));
 
-// 見出しのラベル：あいさつと日付
-(() => {
-  const now = new Date();
-  const hour = now.getHours();
-  const greeting = hour < 11 ? 'GOOD MORNING' : hour < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
-  const date = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
-  $('#today').textContent = `SOTO OTO · ${greeting} · ${date}`;
-})();
-
-// ジャンルの選択画面
 function openGenreSheet() {
   $('#genre-sheet').hidden = false;
-  $('#genre-nav').classList.add('active');
   $('#genre-sheet-close').focus();
 }
 function closeGenreSheet() {
   $('#genre-sheet').hidden = true;
-  $('#genre-nav').classList.remove('active');
-  highlightNav();
 }
 $('#genre-nav').addEventListener('click', openGenreSheet);
 $('#genre-sheet-close').addEventListener('click', closeGenreSheet);
@@ -678,40 +862,13 @@ $('#genre-sheet').addEventListener('click', (event) => {
   if (event.target === event.currentTarget) closeGenreSheet(); // 暗い部分を押しても閉じる
 });
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !$('#genre-sheet').hidden) closeGenreSheet();
+  if (event.key !== 'Escape') return;
+  if (!$('#genre-sheet').hidden) closeGenreSheet();
+  else if (!$('#player').hidden) closePlayer();
 });
 
-// 画面下のナビ：見えている場所の項目を強調する
-const navLinks = [...document.querySelectorAll('.bottom-nav a')];
-// タイマーは再生中カードの中にあるので、場所での判定には使わない（押したときだけ強調）
-const sections = navLinks
-  .filter((a) => a.dataset.target !== 'timer')
-  .map((a) => document.getElementById(a.dataset.target))
-  .filter(Boolean);
-for (const a of navLinks) {
-  a.addEventListener('click', () => {
-    for (const other of navLinks) other.classList.toggle('active', other === a);
-  });
-}
-function highlightNav() {
-  const line = window.innerHeight * 0.35;
-  let current = sections[0];
-  let best = -Infinity;
-  for (const section of sections) {
-    const top = section.getBoundingClientRect().top;
-    if (top <= line && top > best) {
-      best = top;
-      current = section;
-    }
-  }
-  if (!$('#genre-sheet').hidden) return;
-  for (const a of navLinks) a.classList.toggle('active', a.dataset.target === current.id);
-}
-window.addEventListener('scroll', highlightNav, { passive: true });
-highlightNav();
-
 renderFavorites();
-refreshStars();
+renderRecent();
 renderRecommendations();
 (async () => {
   try {

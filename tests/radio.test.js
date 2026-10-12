@@ -1,5 +1,5 @@
 // Run with: jsc -m tests/radio.test.js
-import { PAGE_SIZE, countryStationsPath, searchPath, tagSearchPath, toStations } from '../radio.js';
+import { PAGE_SIZE, buildRows, countryStationsPath, nameSearchPath, searchPath, tagSearchPath, toStations } from '../radio.js';
 
 let failed = 0;
 function eq(actual, expected, label) {
@@ -24,5 +24,17 @@ eq(searchPath('healing', 200), `/json/stations/search?hidebroken=true&is_https=t
 eq(searchPath('all', 0), `/json/stations/search?hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=${PAGE_SIZE}&offset=0`, 'search without tag');
 
 eq(tagSearchPath('city pop'), '/json/stations/search?hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=60&tag=city%20pop', 'tag search path');
+
+// 局名で探す（前後の空白は除く。空なら探さない）
+eq(nameSearchPath(' j-wave '), '/json/stations/search?hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=60&name=j-wave', 'name search');
+eq(nameSearchPath('東京 FM'), '/json/stations/search?hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=60&name=%E6%9D%B1%E4%BA%AC%20FM', 'encoded');
+eq(nameSearchPath('  '), null, 'blank query');
+
+// ジャンルの段：複数のジャンルの局は上の段に一度だけ。空の段は出さない
+const st = (id, genres) => ({ id, genres });
+const pool = [st('a', ['news', 'talk']), st('b', ['talk']), st('c', ['music'])];
+eq(buildRows(pool, ['news', 'talk', 'music', 'jazz'], 10).map((r) => [r.genre, r.stations.map((s) => s.id)]),
+  [['news', ['a']], ['talk', ['b']], ['music', ['c']]], 'rows without duplicates');
+eq(buildRows(pool, ['talk'], 1).map((r) => r.stations.map((s) => s.id)), [['a']], 'row size limit');
 
 print(failed ? `${failed} FAILED` : 'ALL PASSED');
